@@ -1,0 +1,38 @@
+# 环境变量（含 API 密钥）
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# 虚拟环境
+AIvenv/
+AIvenv312/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# 数据（本地索引、embedding 缓存和生成内容）
+data/index/*.json
+data/index/*.npy
+data/output/
+
+# 日志
+logs/
+*.log

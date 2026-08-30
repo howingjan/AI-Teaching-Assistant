@@ -1,0 +1,36 @@
+# ============================================
+# AI 教学助手 - 依赖清单
+# 需要 Python 3.12 环境（AIvenv312）
+# ============================================
+
+# 文档处理
+pdfplumber==0.11.10
+
+# 环境与配置
+python-dotenv==1.2.3
+
+# LLM API
+openai==3.5.0
+requests==2.34.2
+
+# 数值计算
+# numpy<2 是因为 Intel Mac 上 torch 最高只到 2.2.2，而它要求 numpy<2
+numpy<2
+
+# Embedding 检索（跨语言语义检索）
+# 注意：Intel Mac 的 PyTorch 官方 wheel 最高到 2.2.2，
+# 因此 transformers / sentence-transformers 也需配旧版。
+# 若换 Apple Silicon 机器，可升级为 torch>=2.5 + 最新 sentence-transformers。
+torch==2.2.2
+transformers==4.38.2
+sentence-transformers==2.6.1
+
+# UI（Phase 4）
+streamlit==1.62.0
+
+# HTML 导出（Phase 4，Markdown → 自包含 HTML）
+markdown==3.7
+
+# 测试
+pytest==8.3.1
+pytest-cov==4.1.0
