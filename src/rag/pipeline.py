@@ -5,8 +5,7 @@ Orchestrates: retrieve -> prompt -> LLM generate -> parse structured output ->
 validate & resolve citations -> export.
 
 Phase 2 implements the weekly lesson (备课包) task; Phase 3 adds problem
-solving (讲题), final review (期末复习), cheat sheet (速查表) and exam-topic
-knowledge mapping (真题知识点映射), plus a unified dispatch generate_task().
+solving (讲题), plus a unified dispatch generate_task().
 """
 
 import json
@@ -19,36 +18,21 @@ from src.core.config import Config
 from src.core.models import (
     Chunk,
     Citation,
-    ChapterConcepts,
-    CheatsheetItem,
-    CheatsheetSection,
-    ConfusionPoint,
-    ExamKnowledgeMapping,
-    ExamMappingEntry,
     Example,
     Exercise,
-    GeneratedCheatsheet,
     GeneratedLesson,
     GeneratedProblemSolution,
-    GeneratedReview,
     KnowledgePoint,
     LayeredHint,
-    MappedKnowledgePoint,
     ProblemStep,
-    ReviewKnowledgeNode,
     RubricCriterion,
-    SelfTestQuestion,
     TeachingTask,
     TermDefinition,
 )
 from src.prompts.teaching_templates import (
-    build_cheatsheet_messages,
-    build_exam_mapping_messages,
     build_lesson_messages,
     build_problem_solution_messages,
-    build_review_messages,
     format_context,
-    get_template,
 )
 from src.rag.citation_validator import CitationValidator
 from src.rag.llm_client import LLMClient, parse_json_response
@@ -77,7 +61,7 @@ def _list_of_dicts(value: Any) -> List[dict]:
 
 
 def _parse_citations(raw_list: Any) -> List[Citation]:
-    """Parse a list of {document_id, page} dicts into Citation objects."""
+    """Parse a list of {document_id, page, chunk_id} dicts into Citation objects."""
     citations = []
     for item in _list_of_dicts(raw_list):
         doc_id = _clean_text(item.get("document_id"))
@@ -87,7 +71,8 @@ def _parse_citations(raw_list: Any) -> List[Citation]:
             page = int(item.get("page", 0))
         except (TypeError, ValueError):
             page = 0
-        citations.append(Citation(document_id=doc_id, page=page))
+        chunk_id = _clean_text(item.get("chunk_id")) or None
+        citations.append(Citation(document_id=doc_id, page=page, chunk_id=chunk_id))
     return citations
 
 
@@ -135,7 +120,7 @@ class RAGPipeline:
             self.monitor.record(
                 task=task_name,
                 model=getattr(self.llm_client, "model", "unknown"),
-                mode="real" if getattr(self.llm_client, "available", False) else "mock",
+                mode="real",
                 latency_s=latency,
                 prompt_text=prompt_text,
                 completion_text=raw,
@@ -174,6 +159,79 @@ class RAGPipeline:
         limit = max_chars or getattr(Config.retriever, "max_context_chars", 3000)
         return format_context(chunks, self.documents, max_chars=limit)
 
+    def _chunks_in_order(self, document_ids: Optional[List[str]] = None) -> List[Chunk]:
+        """Return the chunks of the given documents in reading order.
+
+        备课不再依赖关键词检索，而是把所选（或全部）资料的片段按
+        文档 + 页内顺序整体取回，确保模型能覆盖资料的全部知识点。
+        """
+        wanted = set(document_ids) if document_ids is not None else None
+        chunks = [
+            c
+            for c in getattr(self.retriever, "chunks", [])
+            if wanted is None or c.document_id in wanted
+        ]
+        # 文档按首次出现顺序、片段按文档内顺序排列。
+        order: Dict[str, int] = {}
+        for c in chunks:
+            order.setdefault(c.document_id, len(order))
+        chunks.sort(key=lambda c: (order.get(c.document_id, 0), c.order_in_doc, c.page_number))
+        return chunks
+
+    def _build_lesson_context(self, chunks: List[Chunk], max_chars: int = 45000) -> str:
+        """Render the selected chunks (reading order) as the lesson context.
+
+        单节课件（约 11–20K 字符）可完整装入，避免“只见开头、不见结尾”；
+        当所选资料整体超过预算时，保留开头约 60% + 结尾约 40%，
+        让模型仍能看到课程的后半部分（如深入主题与练习），而不是只截掉尾巴。
+        """
+        if not chunks:
+            return "（所选资料为空：没有可用于备课的课程内容。）"
+
+        blocks = []
+        for chunk in chunks:
+            doc = self.documents.get(chunk.document_id)
+            name = doc.file_name if doc else chunk.document_id
+            header = (
+                f"[{name} | page {chunk.page_number} | "
+                f"doc_id={chunk.document_id} | chunk_id={chunk.chunk_id}]"
+            )
+            blocks.append(f"{header}\n{chunk.text}")
+
+        def join(bs: List[str]) -> str:
+            return "\n\n".join(bs)
+
+        if len(join(blocks)) <= max_chars:
+            return join(blocks)
+
+        head_budget = int(max_chars * 0.6)
+        tail_budget = max_chars - head_budget
+
+        head: List[str] = []
+        used = 0
+        for b in blocks:
+            cost = len(b) + (2 if head else 0)
+            if used + cost > head_budget:
+                break
+            head.append(b)
+            used += cost
+
+        tail: List[str] = []
+        used = 0
+        for b in reversed(blocks):
+            cost = len(b) + (2 if tail else 0)
+            if used + cost > tail_budget:
+                break
+            tail.append(b)
+            used += cost
+        tail.reverse()
+
+        marker = (
+            "\n\n……（所选资料较长，中间部分已省略，仅保留开头与结尾。"
+            "若生成的备课内容仍不完整，请缩小资料范围后重新生成）\n\n"
+        )
+        return join(head) + marker + join(tail)
+
     # ------------------------------------------------------------------
     # Citation handling
     # ------------------------------------------------------------------
@@ -194,11 +252,17 @@ class RAGPipeline:
 
         missing = set(validation.missing_documents)
         out_of_range = set(validation.out_of_range_pages)
+        invalid_chunks = set(validation.invalid_chunks)
 
         for citation in citations:
             if citation.document_id in missing:
                 if citation.document_id not in [n for n in review_notes if citation.document_id in n]:
                     review_notes.append(f"引用不存在的文档：{citation.document_id}")
+                continue
+            if citation.chunk_id and citation.chunk_id in invalid_chunks:
+                review_notes.append(
+                    f"引用片段不存在：{citation.document_id} 的 chunk_id={citation.chunk_id}"
+                )
                 continue
             if (citation.document_id, citation.page) in out_of_range:
                 review_notes.append(
@@ -216,20 +280,36 @@ class RAGPipeline:
 
     def generate_lesson(
         self,
-        topic: str,
+        topic: str = "",
         student_level: str = "初学者",
         duration: str = "1 小时",
         top_k: int = 5,
         document_ids: Optional[List[str]] = None,
+        cover_all: bool = True,
+        scope_names: Optional[List[str]] = None,
+        cover_max_chars: int = 45000,
+        extra: str = "",
     ) -> GeneratedLesson:
-        """Generate a weekly lesson package (本周备课包)."""
-        chunks = self._retrieve(topic, top_k=top_k, document_ids=document_ids)
-        context = self._build_context(chunks)
+        """Generate a teaching handout / lesson package (备课包 / 期末复习).
+
+        依据所选资料的**完整内容**备课：不再依赖「本周主题」关键词检索，
+        而是把选中（或全部）资料的 chunks 按阅读顺序整体放入上下文，
+        让模型覆盖资料中的全部知识点、给出详实讲义并生成约 3 道习题。
+        当选中全部课程资料时，该材料即相当于整学期期末复习材料。
+        """
+        if cover_all:
+            chunks = self._chunks_in_order(document_ids)
+            context = self._build_lesson_context(chunks, max_chars=cover_max_chars)
+        else:
+            chunks = self._retrieve(topic, top_k=top_k, document_ids=document_ids)
+            context = self._build_context(chunks)
         messages = build_lesson_messages(
             topic=topic,
             context=context,
             student_level=student_level,
             duration=duration,
+            scope_names=scope_names,
+            extra=extra,
         )
         raw = self._generate(messages, "lesson")
         data = parse_json_response(raw)
@@ -286,6 +366,7 @@ class RAGPipeline:
         goal: str = "讲解解题思路，不代写答案",
         top_k: int = 5,
         document_ids: Optional[List[str]] = None,
+        extra: str = "",
     ) -> GeneratedProblemSolution:
         """Generate a tutoring-mode problem explanation (作业/真题讲题)."""
         query = problem_text[:300]
@@ -295,6 +376,7 @@ class RAGPipeline:
             problem_text=problem_text,
             context=context,
             goal=goal,
+            extra=extra,
         )
         raw = self._generate(messages, "problem_solving")
         data = parse_json_response(raw)
@@ -353,205 +435,6 @@ class RAGPipeline:
         return result
 
     # ------------------------------------------------------------------
-    # Phase 3: final review (期末复习)
-    # ------------------------------------------------------------------
-
-    def generate_review(
-        self,
-        scope: str,
-        student_level: str = "初学者",
-        top_k: int = 8,
-        document_ids: Optional[List[str]] = None,
-    ) -> GeneratedReview:
-        """Generate a final-review package (期末复习包)."""
-        chunks = self._retrieve(scope, top_k=top_k, document_ids=document_ids)
-        context = self._build_context(chunks, max_chars=5000)
-        messages = build_review_messages(
-            scope=scope,
-            context=context,
-            student_level=student_level,
-        )
-        raw = self._generate(messages, "review")
-        data = parse_json_response(raw)
-
-        citations = _parse_citations(data.get("citations"))
-        valid_citations, review_notes = self._validate_citations(citations)
-
-        needs_review = _list_of_strings(data.get("needs_review"))
-        needs_review.extend(review_notes)
-
-        result = GeneratedReview(
-            scope=_clean_text(data.get("scope")) or scope,
-            knowledge_map=[
-                ReviewKnowledgeNode(
-                    name=_clean_text(n.get("name")),
-                    chapter=_clean_text(n.get("chapter")),
-                    core_idea=_clean_text(n.get("core_idea")),
-                    prerequisite_of=_list_of_strings(n.get("prerequisite_of")),
-                    depends_on=_list_of_strings(n.get("depends_on")),
-                )
-                for n in _list_of_dicts(data.get("knowledge_map"))
-            ],
-            core_concepts=[
-                ChapterConcepts(
-                    chapter=_clean_text(c.get("chapter")),
-                    concepts=_list_of_strings(c.get("concepts")),
-                )
-                for c in _list_of_dicts(data.get("core_concepts"))
-            ],
-            confusion_points=[
-                ConfusionPoint(
-                    a=_clean_text(c.get("a")),
-                    b=_clean_text(c.get("b")),
-                    difference=_clean_text(c.get("difference")),
-                )
-                for c in _list_of_dicts(data.get("confusion_points"))
-            ],
-            self_test_questions=[
-                SelfTestQuestion(
-                    question=_clean_text(q.get("question")),
-                    hint=_clean_text(q.get("hint")),
-                    reference_answer=_clean_text(q.get("reference_answer")),
-                )
-                for q in _list_of_dicts(data.get("self_test_questions"))
-            ],
-            exam_mapping=[
-                ExamMappingEntry(
-                    exam_topic=_clean_text(e.get("exam_topic")),
-                    knowledge_points=_list_of_strings(e.get("knowledge_points")),
-                )
-                for e in _list_of_dicts(data.get("exam_mapping"))
-            ],
-            priority_advice=_list_of_strings(data.get("priority_advice")),
-            citations=valid_citations,
-            needs_review=needs_review,
-            insufficient_material=bool(not chunks),
-            raw_output=raw,
-        )
-        return result
-
-    # ------------------------------------------------------------------
-    # Phase 3: cheat sheet (速查表)
-    # ------------------------------------------------------------------
-
-    def generate_cheatsheet(
-        self,
-        scope: str,
-        page_limit: str = "两页",
-        allowed: str = "允许携带课程讲义与公式表",
-        top_k: int = 10,
-        document_ids: Optional[List[str]] = None,
-    ) -> GeneratedCheatsheet:
-        """Generate a two-page cheat sheet draft (速查表草稿)."""
-        chunks = self._retrieve(scope, top_k=top_k, document_ids=document_ids)
-        context = self._build_context(chunks, max_chars=6000)
-        messages = build_cheatsheet_messages(
-            scope=scope,
-            context=context,
-            page_limit=page_limit,
-            allowed=allowed,
-        )
-        raw = self._generate(messages, "cheatsheet")
-        data = parse_json_response(raw)
-
-        citations = _parse_citations(data.get("citations"))
-        valid_citations, review_notes = self._validate_citations(citations)
-
-        needs_review = _list_of_strings(data.get("needs_review"))
-        needs_review.extend(review_notes)
-
-        sections = []
-        for sec in _list_of_dicts(data.get("sections")):
-            items = []
-            for it in _list_of_dicts(sec.get("items")):
-                source = None
-                src = it.get("source")
-                if isinstance(src, dict):
-                    src_doc = _clean_text(src.get("document_id"))
-                    if src_doc:
-                        try:
-                            src_page = int(src.get("page", 0))
-                        except (TypeError, ValueError):
-                            src_page = 0
-                        source = Citation(document_id=src_doc, page=src_page)
-                items.append(
-                    CheatsheetItem(
-                        item_type=_clean_text(it.get("type")) or "definition",
-                        label=_clean_text(it.get("label")),
-                        content=_clean_text(it.get("content")),
-                        source=source,
-                    )
-                )
-            if items:
-                sections.append(CheatsheetSection(
-                    heading=_clean_text(sec.get("heading")),
-                    items=items,
-                ))
-
-        within = data.get("within_page_limit")
-        result = GeneratedCheatsheet(
-            title=_clean_text(data.get("title")) or scope,
-            scope=_clean_text(data.get("scope")) or scope,
-            sections=sections,
-            layout_notes=_list_of_strings(data.get("layout_notes")),
-            compression_advice=_list_of_strings(data.get("compression_advice")),
-            within_page_limit=bool(within) if isinstance(within, bool) else True,
-            citations=valid_citations,
-            needs_review=needs_review,
-            insufficient_material=bool(not chunks),
-            raw_output=raw,
-        )
-        return result
-
-    # ------------------------------------------------------------------
-    # Phase 3: exam-topic knowledge mapping (真题知识点映射)
-    # ------------------------------------------------------------------
-
-    def generate_exam_mapping(
-        self,
-        exam_topic: str,
-        top_k: int = 6,
-        document_ids: Optional[List[str]] = None,
-    ) -> ExamKnowledgeMapping:
-        """Map an exam topic/question to course knowledge points."""
-        chunks = self._retrieve(exam_topic, top_k=top_k, document_ids=document_ids)
-        context = self._build_context(chunks)
-        messages = build_exam_mapping_messages(
-            exam_topic=exam_topic,
-            context=context,
-        )
-        raw = self._generate(messages, "exam_mapping")
-        data = parse_json_response(raw)
-
-        knowledge_points = []
-        for k in _list_of_dicts(data.get("knowledge_points")):
-            evidence = _parse_citations(k.get("evidence_chunks") or k.get("evidence"))
-            evidence, _ = self._validate_citations(evidence)
-            knowledge_points.append(
-                MappedKnowledgePoint(
-                    name=_clean_text(k.get("name")),
-                    chapter=_clean_text(k.get("chapter")),
-                    relevance=_clean_text(k.get("relevance")),
-                    evidence=evidence,
-                )
-            )
-
-        needs_review = _list_of_strings(data.get("needs_review"))
-        coverage_gap = _clean_text(data.get("coverage_gap"))
-        if coverage_gap:
-            needs_review.append(f"资料未覆盖的考点：{coverage_gap}")
-
-        result = ExamKnowledgeMapping(
-            exam_topic=_clean_text(data.get("exam_topic")) or exam_topic,
-            knowledge_points=knowledge_points,
-            coverage_gap=coverage_gap,
-            needs_review=needs_review,
-            insufficient_material=bool(not chunks),
-            raw_output=raw,
-        )
-        return result
-
-    # ------------------------------------------------------------------
     # Generic dispatch
     # ------------------------------------------------------------------
 
@@ -562,16 +445,13 @@ class RAGPipeline:
         **kwargs,
     ) -> Any:
         """
-        Unified entry point for any teaching task (used by the evaluator).
+        Unified entry point for a teaching task.
 
         Args:
             task: TeachingTask (or its string value).
             inputs: Task-specific inputs dict, e.g.
-                lesson:      {"topic": ...}
-                problem_solving: {"problem_text": ...}
-                review:      {"scope": ...}
-                cheatsheet:  {"scope": ...}
-                exam_mapping: {"exam_topic": ...}
+                lesson:          {"student_level", "duration", "extra", ...}
+                problem_solving: {"problem_text", "goal", "extra", ...}
 
         Returns:
             The structured result dataclass for the task.
@@ -586,6 +466,10 @@ class RAGPipeline:
                 duration=inputs.get("duration", "1 小时"),
                 top_k=kwargs.get("top_k", 5),
                 document_ids=kwargs.get("document_ids"),
+                cover_all=kwargs.get("cover_all", True),
+                scope_names=kwargs.get("scope_names"),
+                cover_max_chars=kwargs.get("cover_max_chars", 45000),
+                extra=inputs.get("extra", ""),
             )
         if task == TeachingTask.PROBLEM_SOLVING:
             return self.generate_problem_solution(
@@ -593,27 +477,7 @@ class RAGPipeline:
                 goal=inputs.get("goal", "讲解解题思路，不代写答案"),
                 top_k=kwargs.get("top_k", 5),
                 document_ids=kwargs.get("document_ids"),
-            )
-        if task == TeachingTask.REVIEW:
-            return self.generate_review(
-                scope=inputs.get("scope", ""),
-                student_level=inputs.get("student_level", "初学者"),
-                top_k=kwargs.get("top_k", 8),
-                document_ids=kwargs.get("document_ids"),
-            )
-        if task == TeachingTask.CHEATSHEET:
-            return self.generate_cheatsheet(
-                scope=inputs.get("scope", ""),
-                page_limit=inputs.get("page_limit", "两页"),
-                allowed=inputs.get("allowed", "允许携带课程讲义与公式表"),
-                top_k=kwargs.get("top_k", 10),
-                document_ids=kwargs.get("document_ids"),
-            )
-        if task == TeachingTask.EXAM_MAPPING:
-            return self.generate_exam_mapping(
-                exam_topic=inputs.get("exam_topic", ""),
-                top_k=kwargs.get("top_k", 6),
-                document_ids=kwargs.get("document_ids"),
+                extra=inputs.get("extra", ""),
             )
         raise ValueError(f"Unsupported task: {task}")
 
@@ -644,7 +508,7 @@ class RAGPipeline:
         lines += section("前置知识", lesson.prerequisites)
 
         if lesson.core_explanation:
-            lines += ["## 中文基础讲解", "", lesson.core_explanation, ""]
+            lines += ["## 课程精讲（讲义正文）", "", lesson.core_explanation, ""]
 
         if lesson.terminology:
             lines += ["## 英文专业术语", "", "| 术语 | 解释 |", "|------|------|"]
@@ -666,7 +530,7 @@ class RAGPipeline:
         lines += section("课堂互动问题", lesson.discussion_questions)
 
         if lesson.exercises:
-            lines.append("## 课后练习题")
+            lines.append("## 课后习题")
             lines.append("")
             for i, ex in enumerate(lesson.exercises, 1):
                 lines.append(f"### 练习 {i}")
@@ -782,16 +646,9 @@ class RAGPipeline:
     # ------------------------------------------------------------------
 
     def _render_markdown(self, result: Any) -> str:
-        """Render a Phase 3 structured result as Markdown."""
-        task = getattr(result, "task_type", None)
-        if task == TeachingTask.PROBLEM_SOLVING:
+        """Render a problem-solving result as Markdown."""
+        if getattr(result, "task_type", None) == TeachingTask.PROBLEM_SOLVING:
             return self._export_problem_solution_markdown(result)
-        if task == TeachingTask.REVIEW:
-            return self._export_review_markdown(result)
-        if task == TeachingTask.CHEATSHEET:
-            return self._export_cheatsheet_markdown(result)
-        if isinstance(result, ExamKnowledgeMapping):
-            return self._export_exam_mapping_markdown(result)
         return str(result)
 
     def _export_problem_solution_markdown(self, r: GeneratedProblemSolution) -> str:
@@ -841,108 +698,6 @@ class RAGPipeline:
             lines += ["## 参考解题方向（不代写）", "", r.reference_direction, ""]
 
         lines += self._format_citations(r.citations)
-        lines += self._format_needs_review(r.needs_review)
-        return "\n".join(lines).strip() + "\n"
-
-    def _export_review_markdown(self, r: GeneratedReview) -> str:
-        lines = [f"# 期末复习包：{r.scope or '（未命名）'}", ""]
-        if r.insufficient_material:
-            lines.append("> ⚠️ 资料不足，请老师核对补充。")
-            lines.append("")
-
-        if r.knowledge_map:
-            lines += ["## 课程知识点地图", ""]
-            for n in r.knowledge_map:
-                deps = ""
-                if n.depends_on:
-                    deps += f" 依赖：{', '.join(n.depends_on)}"
-                if n.prerequisite_of:
-                    deps += f" 支撑：{', '.join(n.prerequisite_of)}"
-                lines.append(f"- **{n.name}**（{n.chapter or '未标注章节'}）— {n.core_idea}{deps}")
-            lines.append("")
-
-        if r.core_concepts:
-            lines.append("## 按章节的核心概念")
-            lines.append("")
-            for c in r.core_concepts:
-                lines.append(f"### {c.chapter or '未标注章节'}")
-                for concept in c.concepts:
-                    lines.append(f"- {concept}")
-                lines.append("")
-
-        if r.confusion_points:
-            lines += ["## 高频混淆点", ""]
-            for c in r.confusion_points:
-                lines.append(f"- **{c.a}** vs **{c.b}**：{c.difference}")
-            lines.append("")
-
-        if r.self_test_questions:
-            lines.append("## 自测题")
-            lines.append("")
-            for i, q in enumerate(r.self_test_questions, 1):
-                lines.append(f"### 自测 {i}")
-                lines.append("")
-                lines.append(f"**题目**：{q.question}")
-                if q.hint:
-                    lines.append(f"**提示**：{q.hint}")
-                if q.reference_answer:
-                    lines.append(f"**参考答案要点**：{q.reference_answer}")
-                lines.append("")
-
-        if r.exam_mapping:
-            lines += ["## 真题对应知识点", ""]
-            for e in r.exam_mapping:
-                lines.append(f"- **{e.exam_topic}**：{', '.join(e.knowledge_points)}")
-            lines.append("")
-
-        lines += self._numbered("复习优先级建议", r.priority_advice)
-        lines += self._format_citations(r.citations)
-        lines += self._format_needs_review(r.needs_review)
-        return "\n".join(lines).strip() + "\n"
-
-    def _export_cheatsheet_markdown(self, r: GeneratedCheatsheet) -> str:
-        lines = [f"# 速查表：{r.title or '（未命名）'}", ""]
-        lines.append(f"> 覆盖范围：{r.scope or '（未指定）'}")
-        if not r.within_page_limit:
-            lines.append("> ⚠️ 当前内容可能超出篇幅限制，请参考压缩建议。")
-        lines.append("")
-
-        for sec in r.sections:
-            lines.append(f"## {sec.heading}")
-            lines.append("")
-            lines.append("| 类型 | 条目 | 内容 | 来源 |")
-            lines.append("|------|------|------|------|")
-            for item in sec.items:
-                src = ""
-                if item.source:
-                    doc = self.documents.get(item.source.document_id)
-                    name = doc.file_name if doc else item.source.document_id
-                    src = f"{name} p.{item.source.page}"
-                content = item.content.replace("|", "\\|").replace("\n", " ")
-                lines.append(f"| {item.item_type} | {item.label} | {content} | {src} |")
-            lines.append("")
-
-        lines += self._numbered("排版建议", r.layout_notes)
-        lines += self._numbered("压缩建议", r.compression_advice)
-        lines += self._format_citations(r.citations)
-        lines += self._format_needs_review(r.needs_review)
-        return "\n".join(lines).strip() + "\n"
-
-    def _export_exam_mapping_markdown(self, r: ExamKnowledgeMapping) -> str:
-        lines = [f"# 真题知识点映射：{r.exam_topic or '（未命名）'}", ""]
-        if r.knowledge_points:
-            lines += ["## 对应的知识点", ""]
-            for k in r.knowledge_points:
-                ev = ", ".join(
-                    f"{self.documents.get(c.document_id).file_name if self.documents.get(c.document_id) else c.document_id} p.{c.page}"
-                    for c in k.evidence
-                )
-                lines.append(f"- **{k.name}**（{k.chapter or '未标注章节'}）— {k.relevance}")
-                if ev:
-                    lines.append(f"  - 依据：{ev}")
-            lines.append("")
-        if r.coverage_gap:
-            lines += ["## 资料未覆盖的考点", "", r.coverage_gap, ""]
         lines += self._format_needs_review(r.needs_review)
         return "\n".join(lines).strip() + "\n"
 

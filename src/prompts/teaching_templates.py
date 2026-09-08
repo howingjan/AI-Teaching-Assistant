@@ -2,8 +2,7 @@
 Teaching prompt templates (Phase 2 + Phase 3).
 
 Provides:
-  - SYSTEM_PROMPT and per-task templates (lesson / problem solving / review /
-    cheatsheet / exam mapping).
+  - SYSTEM_PROMPT and per-task templates (lesson / problem solving).
   - format_context(): render retrieved chunks with document + page metadata.
   - build_*_messages(): assemble chat messages for each teaching task.
 
@@ -12,6 +11,7 @@ return machine-parseable teaching materials that map directly onto the dataclass
 in src/core/models.py.
 """
 
+import re
 from typing import List, Optional
 
 from src.core.models import (
@@ -29,6 +29,10 @@ SYSTEM_PROMPT = (
     "你只根据【课程资料】回答问题，绝不编造资料中没有的内容。"
     "所有事实性结论都必须标注来源。当资料不足以回答时，明确说明资料不足，"
     "并指出哪些内容需要老师补充，而不是猜测。"
+    "\n\n引用格式（必读）：课程资料每条开头标注了 [文件名 | page 页码 | chunk_id]。"
+    "输出 citations 时必须带真实存在的 chunk_id，格式示例："
+    "{\"citations\": [{\"document_id\": \"真实存在的文档ID\", \"page\": 0, \"chunk_id\": \"对应chunk\"}]}。"
+    "不要引用资料中未出现的 chunk_id 或页码。"
 )
 
 # ---------------------------------------------------------------------------
@@ -36,33 +40,58 @@ SYSTEM_PROMPT = (
 # ---------------------------------------------------------------------------
 
 LESSON_TEMPLATE = """\
-任务：为本周课程生成一份中文「备课包」。
+任务：根据【课程资料】为老师撰写一份**中文教学讲义（备课包）**，对标高质量补习班讲义的风格与深度：
+内容详尽、结构清晰、例题与代码/命令丰富、重视易错点与记忆技巧。
 
-【本周主题】{topic}
 【学生水平】{student_level}
 【课堂时长】{duration}
+【内容规模】{detail_guide}
+【主题/侧重】{topic}
+【资料范围】{scope_names}
 
 【课程资料】
 {context}
 
 【输出要求】只输出一个 JSON 对象（不要输出多余文字），字段如下：
 {{
-  "topic": "本周主题（中文）",
-  "learning_objectives": ["2-4 条学习目标"],
-  "prerequisites": ["学生需要的前置知识"],
-  "core_explanation": "中文基础讲解（覆盖主题，可引用资料）",
+  "topic": "本课主题（中文，精炼且有区分度，如：Week5 SQL 查询与数据汇总）",
+  "learning_objectives": ["3-5 条可衡量的学习目标，如：能够写出…/解释…/区分…"],
+  "prerequisites": ["前置知识清单"],
+  "core_explanation": "整篇讲义的正文（Markdown，字数与详尽度以【内容规模】为准，详见【正文写作规范】）",
   "terminology": [{{"term": "英文术语", "explanation": "中文解释"}}],
-  "examples": [{{"title": "例子标题", "content": "例子内容"}}],
-  "misconceptions": ["常见误区"],
-  "discussion_questions": ["课堂互动问题"],
-  "exercises": [{{"question": "题目", "hint": "提示", "reference_answer": "参考答案"}}],
-  "citations": [{{"document_id": "真实存在的文档ID", "page": 页码}}],
-  "needs_review": ["需要老师确认或补充的内容，没有则留空数组"]
+  "examples": [{{"title": "例子标题", "content": "例子内容（可含代码）"}}],
+  "misconceptions": ["2-4 个学生高频误区，要具体"],
+  "discussion_questions": ["2-3 个课堂互动/思考题"],
+  "exercises": [{{"question": "题干", "hint": "分步提示", "reference_answer": "参考答案"}}],
+  "citations": [{{"document_id": "真实存在的文档ID", "page": 页码, "chunk_id": "该资料头部的chunk_id"}}],
+  "needs_review": ["需要老师确认/补充的内容，没有则留空数组"]
 }}
 
+【正文写作规范】(core_explanation 使用 Markdown，换行用 \\n)
+1. 开头先给「📋 本周内容预览」：编号列出本课将讲的主要知识点（像目录一样）。
+2. 然后按知识点分节（### / #### 小节标题），逐点精讲，每个知识点尽量做到“四件套”：
+   a. 定义/作用：1-2 句中英文说明，点出别称或英文术语；
+   b. 关键点：用表格 / 步骤列表 / 流程图 / 执行顺序表达，必要时给速查表；
+   c. 例子：给 1-2 个贴近本课资料的具体例子，命令/代码放 ``` 代码块并说明结果；
+      例子必须与资料中的真实用法一致，不要发明资料里没有的 API 或语法；
+   d. 易错与提示：用 ⚠️ / 💡 标注易错点、边界情况（NULL、默认值、截断等）、
+      性能提示或记忆技巧，可用类比帮助理解（如“p 值像法庭证据”）。
+3. 重点/难点可单独用 #### 强调，段落之间要有衔接，避免罗列名词。
+4. 覆盖【课程资料】中的**全部知识点**；若资料过长已被截断，则把“已出现”的内容讲透，
+   并在 needs_review 注明可能遗漏的部分，绝不编造。
+
+【习题规范】(exercises)
+- 生成 **3 道**围绕本课核心知识点的练习题，题型尽量多样（选择/判断/填空/简答/写代码/综合案例任选组合）；
+- question：给真实场景题干（尽量具体：给定字段、数据、要求，参考“部门-员工”式可落地的题）；
+- hint：分步提示，不给最终答案；
+- reference_answer：清晰参考答案或要点。
+
 【重要】
-- 只使用【课程资料】中的内容；citations 必须引用真实存在的 document_id 和页码。
-- 如果资料不足，请在 needs_review 中说明，并把字段留空而不是编造。
+- 只使用【课程资料】中的内容；citations 必须引用真实存在的 document_id 与页码/chunk_id。
+- 只有当【课程资料】里出现了“省略/截断”之类的明确标记时，才在 needs_review 说明资料缺失；
+  资料完整时不要写“资料被截断/可能缺失”这类提示。
+- 内容宁详勿略：写出能直接上讲台、可当讲义打印的详细程度。
+- 如果资料不足，请在 needs_review 中说明并把字段留空，而不是编造。
 """
 
 PROBLEM_SOLVING_TEMPLATE = """\
@@ -97,7 +126,7 @@ PROBLEM_SOLVING_TEMPLATE = """\
   "common_errors": ["学生容易犯的错误"],
   "rubric_mapping": [{{"criterion": "评分标准条目", "how_to_earn": "如何满足这条标准"}}],
   "reference_direction": "解题方向与验证方法（不直接代写）",
-  "citations": [{{"document_id": "真实存在的文档ID", "page": 页码}}],
+  "citations": [{{"document_id": "真实存在的文档ID", "page": 页码, "chunk_id": "该资料头部的chunk_id"}}],
   "needs_review": ["需要老师确认或补充的内容，没有则留空数组"]
 }}
 
@@ -106,116 +135,12 @@ PROBLEM_SOLVING_TEMPLATE = """\
 - citations 必须引用真实存在的 document_id 和页码；资料不足时在 needs_review 说明。
 """
 
-REVIEW_TEMPLATE = """\
-任务：为期末复习生成一份「期末复习包」。
-
-【复习范围】{scope}
-【学生水平】{student_level}
-
-【课程资料】
-{context}
-
-【输出要求】只输出一个 JSON 对象（不要输出多余文字），字段如下：
-{{
-  "scope": "复习范围（中文）",
-  "knowledge_map": [
-    {{
-      "name": "知识点",
-      "chapter": "所属章节",
-      "core_idea": "核心概念（1-2 句）",
-      "prerequisite_of": ["该知识点支撑的后续知识点"],
-      "depends_on": ["该知识点依赖的前置知识点"]
-    }}
-  ],
-  "core_concepts": [{{"chapter": "章节", "concepts": ["核心概念"]}}],
-  "confusion_points": [{{"a": "概念 A", "b": "概念 B", "difference": "如何区分"}}],
-  "self_test_questions": [{{"question": "自测题", "hint": "提示", "reference_answer": "参考答案要点"}}],
-  "exam_mapping": [{{"exam_topic": "真题/考点", "knowledge_points": ["对应知识点"]}}],
-  "priority_advice": ["复习优先级建议"],
-  "citations": [{{"document_id": "真实存在的文档ID", "page": 页码}}],
-  "needs_review": ["需要老师确认或补充的内容，没有则留空数组"]
-}}
-
-【重要】
-- knowledge_map 应覆盖复习范围内的主要章节，并尽量给出知识点之间的依赖关系。
-- citations 必须引用真实存在的 document_id 和页码；资料不足时在 needs_review 说明。
-"""
-
-CHEATSHEET_TEMPLATE = """\
-任务：生成一份考场用的「两页 cheat sheet」草稿。
-
-【考试范围】{scope}
-【篇幅限制】{page_limit}
-【允许携带】{allowed}
-
-【课程资料】
-{context}
-
-【输出要求】只输出一个 JSON 对象（不要输出多余文字），字段如下：
-{{
-  "title": "cheat sheet 标题",
-  "scope": "覆盖的考试范围",
-  "sections": [
-    {{
-      "heading": "区块标题",
-      "items": [
-        {{"type": "definition|formula|step|comparison|example",
-          "label": "条目名（如 Mean）",
-          "content": "尽量简短的内容或公式",
-          "source": {{"document_id": "真实存在的文档ID", "page": 页码}}}}
-      ]
-    }}
-  ],
-  "layout_notes": ["排版建议：如何用两页布局、字号、分区"],
-  "compression_advice": ["超出篇幅时的压缩建议"],
-  "within_page_limit": true,
-  "citations": [{{"document_id": "真实存在的文档ID", "page": 页码}}],
-  "needs_review": ["需要老师确认或补充的内容，没有则留空数组"]
-}}
-
-【重要】
-- 内容必须短小精悍，适合考场快速查找；公式和定义优先。
-- within_page_limit 表示按当前内容量是否估计能放进 {page_limit} 页。
-- citations 必须引用真实存在的 document_id 和页码；资料不足时在 needs_review 说明。
-"""
-
-EXAM_MAPPING_TEMPLATE = """\
-任务：分析一道真题/考点，映射到课程知识点。
-
-【真题/考点】{exam_topic}
-【课程资料】
-{context}
-
-【输出要求】只输出一个 JSON 对象（不要输出多余文字），字段如下：
-{{
-  "exam_topic": "真题/考点描述",
-  "knowledge_points": [
-    {{
-      "name": "知识点",
-      "chapter": "所属章节",
-      "relevance": "为什么真题会考到这个知识点（依据资料）",
-      "evidence_chunks": [{{"document_id": "真实存在的文档ID", "page": 页码}}]
-    }}
-  ],
-  "coverage_gap": "资料中未覆盖的考点，若全部覆盖则为空字符串",
-  "needs_review": ["需要老师确认或补充的内容，没有则留空数组"]
-}}
-
-【重要】
-- 只使用【课程资料】中的内容；evidence_chunks 必须引用真实存在的 document_id 和页码。
-- 资料中没有的考点必须放进 coverage_gap，而不是编造。
-"""
-
-# ---------------------------------------------------------------------------
 # Template registry
 # ---------------------------------------------------------------------------
 
 _TEMPLATES = {
     TeachingTask.LESSON: LESSON_TEMPLATE,
     TeachingTask.PROBLEM_SOLVING: PROBLEM_SOLVING_TEMPLATE,
-    TeachingTask.REVIEW: REVIEW_TEMPLATE,
-    TeachingTask.CHEATSHEET: CHEATSHEET_TEMPLATE,
-    TeachingTask.EXAM_MAPPING: EXAM_MAPPING_TEMPLATE,
 }
 
 
@@ -266,7 +191,7 @@ def format_context(
     for chunk in chunks:
         doc = documents.get(chunk.document_id)
         doc_name = doc.file_name if doc else chunk.document_id
-        header = f"[{doc_name} | page {chunk.page_number} | doc_id={chunk.document_id}]"
+        header = f"[{doc_name} | page {chunk.page_number} | doc_id={chunk.document_id} | chunk_id={chunk.chunk_id}]"
         blocks.append(f"{header}\n{chunk.text}")
 
     full = "\n\n".join(blocks)
@@ -313,19 +238,64 @@ def _template_keys(template: str) -> set:
     return keys
 
 
+def _duration_hours(duration: str) -> float:
+    """Extract hours from a duration string like '1.5 小时' or '90 分钟'."""
+    m = re.search(r"(\d+(?:\.\d+)?)", duration or "")
+    if not m:
+        return 1.5
+    val = float(m.group(1))
+    if "分钟" in duration:
+        return val / 60
+    return val
+
+
+def _duration_guide(duration: str) -> str:
+    """Return a length/detail directive scaled to the classroom hours."""
+    hours = _duration_hours(duration)
+    if hours <= 1.0:
+        return (
+            "精简版课堂（≤1 小时）：只讲最核心知识点，每个知识点定义+1 个例子即可，"
+            "正文约 1500–3000 字，练习题 2 道。"
+        )
+    if hours <= 1.5:
+        return (
+            "适中课堂（约 1–1.5 小时）：每个知识点做到定义+关键点+例子，"
+            "正文约 3000–4500 字，练习题 3 道。"
+        )
+    if hours <= 2.5:
+        return (
+            "详实课堂（约 1.5–2.5 小时，常规）：每个知识点做到定义/表格/真实例子/易错提示四件套，"
+            "正文约 4500–7500 字，练习题 3 道。"
+        )
+    return (
+        "超详版课堂（>2.5 小时）：在四件套基础上为每个重点多给 1-2 个进阶/对比例子与扩展，"
+        "正文约 7500–11000 字，讨论问题 4-5 个，练习题可 4 道。"
+    )
+
+
 def build_lesson_messages(
     topic: str,
     context: str,
     student_level: str = "初学者",
     duration: str = "1 小时",
+    scope_names: Optional[List[str]] = None,
+    extra: str = "",
 ) -> List[dict]:
-    """Build chat messages for the lesson (备课包) task."""
+    """Build chat messages for the lesson (备课包 / 期末复习) task."""
+    scope_text = "、".join(scope_names) if scope_names else "（见下方资料标注）"
     user = LESSON_TEMPLATE.format(
         topic=topic,
         student_level=student_level,
         duration=duration,
+        detail_guide=_duration_guide(duration),
         context=context,
+        scope_names=scope_text,
     )
+    if extra and extra.strip():
+        user += (
+            "\n\n【老师对本课的附加要求】在不改变上方 JSON 字段结构的前提下尽量满足；"
+            "与课程资料冲突时以资料为准并说明。\n" + extra.strip()
+        )
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": user},
@@ -336,6 +306,7 @@ def build_problem_solution_messages(
     problem_text: str,
     context: str,
     goal: str = "讲解解题思路，不代写答案",
+    extra: str = "",
 ) -> List[dict]:
     """Build chat messages for the problem-solving (讲题) task."""
     user = PROBLEM_SOLVING_TEMPLATE.format(
@@ -343,57 +314,11 @@ def build_problem_solution_messages(
         goal=goal,
         context=context,
     )
-    return [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": user},
-    ]
-
-
-def build_review_messages(
-    scope: str,
-    context: str,
-    student_level: str = "初学者",
-) -> List[dict]:
-    """Build chat messages for the final review (期末复习) task."""
-    user = REVIEW_TEMPLATE.format(
-        scope=scope,
-        student_level=student_level,
-        context=context,
-    )
-    return [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": user},
-    ]
-
-
-def build_cheatsheet_messages(
-    scope: str,
-    context: str,
-    page_limit: str = "两页",
-    allowed: str = "允许携带课程讲义与公式表",
-) -> List[dict]:
-    """Build chat messages for the cheat sheet task."""
-    user = CHEATSHEET_TEMPLATE.format(
-        scope=scope,
-        page_limit=page_limit,
-        allowed=allowed,
-        context=context,
-    )
-    return [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": user},
-    ]
-
-
-def build_exam_mapping_messages(
-    exam_topic: str,
-    context: str,
-) -> List[dict]:
-    """Build chat messages for the exam-question knowledge mapping task."""
-    user = EXAM_MAPPING_TEMPLATE.format(
-        exam_topic=exam_topic,
-        context=context,
-    )
+    if extra and extra.strip():
+        user += (
+            "\n\n【老师附加要求】在不改变上方 JSON 字段结构的前提下尽量满足；"
+            "与课程资料冲突时以资料为准并说明。\n" + extra.strip()
+        )
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": user},

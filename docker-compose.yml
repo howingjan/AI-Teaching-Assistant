@@ -1,0 +1,28 @@
+# ============================================================
+# AI 教学助手 - Docker Compose（推荐给其他老师使用）
+#
+# 首次使用：
+#   1) cp .env.example .env          # 填入 DEEPSEEK_API_KEY
+#   2) docker compose up -d --build
+#   3) 打开 http://localhost:8501
+#   4) 把课件 PDF 放入 ./data/<课程名>/uploads 或在网页里上传
+#
+# 数据持久化：课件与索引保存在宿主机的 ./data 目录（请勿外泄课件）
+# 说明：镜像不含任何课件，仅为通用程序。
+# ============================================================
+services:
+  ai-teaching-assistant:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-teaching-assistant:latest
+    container_name: ai-teaching-assistant
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      HF_HOME: /app/.hf
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

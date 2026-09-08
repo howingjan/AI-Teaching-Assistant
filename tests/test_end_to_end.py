@@ -8,7 +8,7 @@ from pathlib import Path
 from src.core.models import Page, Chunk
 from src.document.text_chunker import TextChunker
 from src.document.document_loader import DocumentLoader
-from src.retrieval.retriever import TFIDFRetriever
+from conftest import TestRetriever
 
 
 class TestDocumentPipeline(unittest.TestCase):
@@ -82,7 +82,7 @@ class TestDocumentPipeline(unittest.TestCase):
         ]
         
         # Create retriever
-        retriever = TFIDFRetriever(chunks, {"course_101": doc})
+        retriever = TestRetriever(chunks, {"course_101": doc})
         
         # Test basic search
         results = retriever.search("supervised learning", top_k=3)
@@ -92,20 +92,6 @@ class TestDocumentPipeline(unittest.TestCase):
         
         # First result should be about supervised learning
         self.assertIn("supervised", results[0].chunk.text.lower())
-        
-        # Test keyword search
-        keyword_results = retriever.search_by_keyword(
-            ["neural", "network"],
-            top_k=2,
-            require_all=False,
-        )
-        
-        self.assertGreater(len(keyword_results), 0)
-        
-        # Test context retrieval
-        if results:
-            context = retriever.get_chunk_context(results[0].chunk, context_chunks=1)
-            self.assertGreater(len(context), 0)
     
     def test_end_to_end_flow(self):
         """Test end-to-end search flow."""
@@ -129,7 +115,7 @@ class TestDocumentPipeline(unittest.TestCase):
         ]
         
         # Create retriever and search
-        retriever = TFIDFRetriever(chunks, {"statistics_201": doc})
+        retriever = TestRetriever(chunks, {"statistics_201": doc})
         
         # Simulate teacher query
         query = "How do I explain hypothesis testing to students?"

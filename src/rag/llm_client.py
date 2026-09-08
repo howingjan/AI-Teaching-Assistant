@@ -8,9 +8,8 @@ interface:
     raw = client.generate(messages, json_mode=True)
     data = parse_json_response(raw)
 
-When no API key is configured, LLMClient falls back to an offline MOCK mode
-that returns deterministic structured JSON, so the full pipeline can be
-demonstrated and tested without network access.
+No offline/mock fallback is provided: generate() always calls the real model
+API, so DEEPSEEK_API_KEY must be configured before any generation call.
 """
 
 import json
@@ -52,11 +51,37 @@ def parse_json_response(raw: str) -> Dict[str, Any]:
     text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s*```$", "", text).strip()
 
-    # Extract the first balanced {...} region if surrounded by prose.
+    # Locate the first '{' and extract the *balanced* {...} object, so any
+    # trailing prose (or a stray closing brace) does not corrupt the payload.
     start = text.find("{")
-    end = text.rfind("}")
-    if start == -1 or end == -1 or end <= start:
+    if start == -1:
         raise ValueError(f"No JSON object found in model output: {raw[:200]!r}")
+
+    depth = 0
+    in_string = False
+    escaped = False
+    end = None
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = i
+                break
+    if end is None:
+        raise ValueError(f"Unbalanced JSON object in model output: {raw[:200]!r}")
 
     candidate = text[start:end + 1]
     try:
@@ -135,7 +160,10 @@ class LLMClient:
             Raw model output text.
         """
         if not self.available or self._client is None:
-            return self._mock_generate(messages, json_mode=json_mode)
+            raise RuntimeError(
+                "未配置 DEEPSEEK_API_KEY，无法真实生成。"
+                "请在项目根目录 .env 中配置 DEEPSEEK_API_KEY 后重试。"
+            )
 
         return self._api_generate(
             messages,
@@ -172,68 +200,3 @@ class LLMClient:
                 last_exc = exc
                 logger.warning(f"LLM API attempt {attempt + 1} failed: {exc}")
         raise RuntimeError(f"LLM API failed after {self.retry_count} attempts: {last_exc}")
-
-    # ------------------------------------------------------------------
-    # Mock mode
-    # ------------------------------------------------------------------
-
-    def _mock_generate(self, messages: List[dict], json_mode: bool = False) -> str:
-        """
-        Deterministic offline generator for demos/tests.
-
-        Extracts the lesson topic from the user message (【本周主题】...) and
-        returns a complete, clearly-marked mock lesson JSON.
-        """
-        user_content = ""
-        for msg in messages:
-            if msg.get("role") == "user":
-                user_content += str(msg.get("content", "")) + "\n"
-
-        topic = "（未指定）"
-        match = re.search(r"【本周主题】([^\n【】]+)", user_content)
-        if match:
-            topic = match.group(1).strip()
-
-        # Also try the problem/review/cheatsheet entry points for nicer demos.
-        if topic == "（未指定）":
-            for pattern in (r"【题目】([^\n【】]+)", r"【复习范围】([^\n【】]+)", r"【考试范围】([^\n【】]+)"):
-                m = re.search(pattern, user_content)
-                if m:
-                    topic = m.group(1).strip()
-                    break
-
-        payload = {
-            "task_type": "lesson",
-            "topic": topic,
-            "learning_objectives": [
-                f"理解「{topic}」的核心概念与定义",
-                "能够用中文解释相关英文术语",
-                "能完成对应的基础练习",
-            ],
-            "prerequisites": ["课程前期讲解的基础概念", "基本的数据分析思维"],
-            "core_explanation": (
-                f"（mock 内容）本小节围绕「{topic}」展开。"
-                "真实生成模式下，系统会检索课程资料并给出带来源页码的中文讲解。"
-            ),
-            "terminology": [
-                {"term": topic, "explanation": "（mock）术语的中文解释由真实模型生成"}
-            ],
-            "examples": [
-                {"title": "课堂示例", "content": "（mock）此处为简单例子，真实模式下由资料驱动生成"}
-            ],
-            "misconceptions": ["（mock）常见误区示例，真实模式下依据资料整理"],
-            "discussion_questions": [f"你认为「{topic}」在什么场景下最有用？"],
-            "exercises": [
-                {
-                    "question": f"（mock）请用自己的话解释「{topic}」。",
-                    "hint": "（mock）提示：从定义和应用场景两个角度回答。",
-                    "reference_answer": "（mock）参考答案由真实模型结合资料生成。",
-                }
-            ],
-            "citations": [],
-            "needs_review": [
-                "当前为 mock 模式（未配置 DEEPSEEK_API_KEY），内容未经真实检索与模型生成，需要老师重新生成。"
-            ],
-            "insufficient_material": False,
-        }
-        return json.dumps(payload, ensure_ascii=False)

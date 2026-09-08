@@ -21,15 +21,16 @@ class TextChunker:
     
     def __init__(
         self,
-        max_tokens: int = 1000,
+        max_tokens: int = 400,
         overlap_sentences: int = 2,
         char_per_token: float = 1.5  # Rough estimate for Chinese
     ):
         """
         Initialize chunker.
-        
+
         Args:
-            max_tokens: Approximate maximum tokens per chunk
+            max_tokens: Approximate maximum tokens per chunk (default 400 to stay
+                within the e5-small 512-token embedding limit).
             overlap_sentences: Number of sentences to overlap between chunks
             char_per_token: Estimated characters per token (for Chinese ~1.5)
         """
@@ -37,74 +38,48 @@ class TextChunker:
         self.overlap_sentences = overlap_sentences
         self.char_per_token = char_per_token
         self.max_chars = int(max_tokens * char_per_token)
-    
+        # 避免碎片化：段落边界只在块已累积到该比例时才断开
+        self.min_block_chars = int(self.max_chars * 0.4)
+
     def chunk_page(self, page: Page, chunk_id_prefix: str = "") -> List[Chunk]:
         """
-        Chunk a single page into semantic pieces.
-        
+        Chunk a single page into semantic pieces with structural awareness.
+
+        Strategy:
+          1. Split the page text into paragraph blocks on blank lines
+             (_split_blocks) so section / bullet boundaries act as preferred
+             break points.
+          2. Within each block, greedily merge sentences up to max_chars.
+          3. Flush a chunk when the length limit is exceeded, or when a
+             paragraph boundary is reached and the block already carries
+             enough content (avoids fragmenting tiny headings).
+
         Args:
             page: Page object containing text and metadata
             chunk_id_prefix: Prefix for chunk IDs
-            
+
         Returns:
             List of Chunk objects with source information
         """
         if not page.text or not page.text.strip():
             return []
-        
-        # Split by sentences (Chinese and English)
-        sentences = self._split_sentences(page.text)
-        
-        if not sentences:
-            return []
-        
+
+        blocks = self._split_blocks(page.text)
+
         chunks = []
-        current_chunk_sentences = []
+        current_chunk_sentences: List[str] = []
         current_length = 0
         chunk_counter = 0
         char_position = 0
-        
-        for sentence in sentences:
-            sentence_length = len(sentence)
-            
-            # If adding this sentence would exceed limit
-            if current_length + sentence_length > self.max_chars and current_chunk_sentences:
-                # Save current chunk
-                chunk_text = " ".join(current_chunk_sentences)
-                chunk_char_start = char_position - sum(len(s) for s in current_chunk_sentences)
-                
-                chunk = Chunk(
-                    chunk_id=f"{chunk_id_prefix}_{page.page_number}_{chunk_counter}",
-                    document_id=page.document_id,
-                    page_number=page.page_number,
-                    text=chunk_text,
-                    char_start=max(0, chunk_char_start),
-                    char_end=char_position,
-                    section=page.sections[0] if page.sections else None,
-                    estimated_tokens=int(len(chunk_text) / self.char_per_token),
-                    order_in_doc=len(chunks),
-                )
-                chunks.append(chunk)
-                chunk_counter += 1
-                
-                # Keep overlap for context
-                if self.overlap_sentences > 0 and current_chunk_sentences:
-                    overlap = current_chunk_sentences[-self.overlap_sentences:]
-                    current_chunk_sentences = overlap
-                    current_length = sum(len(s) for s in overlap)
-                else:
-                    current_chunk_sentences = []
-                    current_length = 0
-            
-            current_chunk_sentences.append(sentence)
-            current_length += sentence_length
-            char_position += sentence_length
-        
-        # Handle remaining chunk
-        if current_chunk_sentences:
+
+        def flush() -> None:
+            """Persist the pending sentences as a Chunk (keeping overlap)."""
+            nonlocal current_chunk_sentences, current_length, chunk_counter
+            if not current_chunk_sentences:
+                return
             chunk_text = " ".join(current_chunk_sentences)
             chunk_char_start = char_position - sum(len(s) for s in current_chunk_sentences)
-            
+
             chunk = Chunk(
                 chunk_id=f"{chunk_id_prefix}_{page.page_number}_{chunk_counter}",
                 document_id=page.document_id,
@@ -117,8 +92,47 @@ class TextChunker:
                 order_in_doc=len(chunks),
             )
             chunks.append(chunk)
-        
+            chunk_counter += 1
+
+            # Keep overlap for context continuity
+            if self.overlap_sentences > 0 and current_chunk_sentences:
+                overlap = current_chunk_sentences[-self.overlap_sentences:]
+                current_chunk_sentences = overlap
+                current_length = sum(len(s) for s in overlap)
+            else:
+                current_chunk_sentences = []
+                current_length = 0
+
+        for block in blocks:
+            sentences = self._split_sentences(block)
+            for sentence in sentences:
+                sentence_length = len(sentence)
+                # Length limit reached → break at sentence boundary
+                if current_length + sentence_length > self.max_chars and current_chunk_sentences:
+                    flush()
+                current_chunk_sentences.append(sentence)
+                current_length += sentence_length
+                char_position += sentence_length
+            # Paragraph boundary: flush if the block already has enough content
+            if current_chunk_sentences and current_length >= self.min_block_chars:
+                flush()
+
+        # Handle remaining trailing sentences
+        if current_chunk_sentences:
+            flush()
+
         return chunks
+
+    def _split_blocks(self, text: str) -> List[str]:
+        """
+        Split text into paragraph blocks on blank lines (structural awareness).
+
+        Blank lines commonly separate sections / bullet groups in lecture
+        slides, so treating them as preferred break points keeps chunks
+        aligned with the document's own structure.
+        """
+        blocks = [b.strip() for b in re.split(r"\n\s*\n", text)]
+        return [b for b in blocks if b]
     
     def chunk_pages(
         self,

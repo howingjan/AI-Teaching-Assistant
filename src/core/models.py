@@ -183,11 +183,8 @@ PageStore = Dict[str, List[Page]]  # document_id -> List[Page]
 
 class TeachingTask(str, Enum):
     """Supported teaching tasks."""
-    LESSON = "lesson"  # 本周备课包
+    LESSON = "lesson"  # 备课 / 期末复习（内容范围由所选资料决定）
     PROBLEM_SOLVING = "problem_solving"  # 作业与真题讲题
-    REVIEW = "review"  # 期末复习包
-    CHEATSHEET = "cheatsheet"  # 两页 cheat sheet
-    EXAM_MAPPING = "exam_mapping"  # 真题知识点映射
 
 
 @dataclass
@@ -253,6 +250,7 @@ class CitationValidation:
     citations: List[Citation] = field(default_factory=list)
     missing_documents: List[str] = field(default_factory=list)
     out_of_range_pages: List[tuple] = field(default_factory=list)
+    invalid_chunks: List[str] = field(default_factory=list)  # chunk_id 不存在或不属于该文档
     
     @property
     def valid_count(self) -> int:
@@ -260,7 +258,11 @@ class CitationValidation:
     
     @property
     def invalid_count(self) -> int:
-        return len(self.missing_documents) + len(self.out_of_range_pages)
+        return (
+            len(self.missing_documents)
+            + len(self.out_of_range_pages)
+            + len(self.invalid_chunks)
+        )
     
     @property
     def valid(self) -> bool:
@@ -413,246 +415,5 @@ class GeneratedProblemSolution:
         # Tutoring check: layered hints must have at least 2 distinct levels.
         levels = {h.level for h in self.layered_hints}
         checks["layered_hints_are_tiered"] = len(levels) >= 2
-        checks["complete"] = all(checks.values())
-        return checks
-
-
-@dataclass
-class ReviewKnowledgeNode:
-    """A knowledge node in the final-review knowledge map."""
-    name: str = ""
-    chapter: str = ""
-    core_idea: str = ""
-    prerequisite_of: List[str] = field(default_factory=list)
-    depends_on: List[str] = field(default_factory=list)
-
-
-@dataclass
-class ChapterConcepts:
-    """Core concepts grouped by chapter."""
-    chapter: str = ""
-    concepts: List[str] = field(default_factory=list)
-
-
-@dataclass
-class ConfusionPoint:
-    """A commonly confused pair of concepts and how to tell them apart."""
-    a: str = ""
-    b: str = ""
-    difference: str = ""
-
-
-@dataclass
-class SelfTestQuestion:
-    """A self-test question with hint and answer key."""
-    question: str = ""
-    hint: str = ""
-    reference_answer: str = ""
-
-
-@dataclass
-class ExamMappingEntry:
-    """Maps an exam topic to the course knowledge points it tests."""
-    exam_topic: str = ""
-    knowledge_points: List[str] = field(default_factory=list)
-
-
-@dataclass
-class GeneratedReview:
-    """
-    Structured output for the '期末复习包' task (Phase 3).
-
-    Maps to the product plan's MVP schema (section 3.3 C): knowledge map,
-    per-chapter core concepts, dependencies, confusion points, self-tests,
-    exam mapping and priority advice.
-    """
-    task_type: TeachingTask = TeachingTask.REVIEW
-    scope: str = ""
-    knowledge_map: List[ReviewKnowledgeNode] = field(default_factory=list)
-    core_concepts: List[ChapterConcepts] = field(default_factory=list)
-    confusion_points: List[ConfusionPoint] = field(default_factory=list)
-    self_test_questions: List[SelfTestQuestion] = field(default_factory=list)
-    exam_mapping: List[ExamMappingEntry] = field(default_factory=list)
-    priority_advice: List[str] = field(default_factory=list)
-    citations: List[Citation] = field(default_factory=list)
-    needs_review: List[str] = field(default_factory=list)
-    insufficient_material: bool = False
-    raw_output: str = ""
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "task_type": self.task_type.value,
-            "scope": self.scope,
-            "knowledge_map": [
-                {
-                    "name": n.name,
-                    "chapter": n.chapter,
-                    "core_idea": n.core_idea,
-                    "prerequisite_of": n.prerequisite_of,
-                    "depends_on": n.depends_on,
-                }
-                for n in self.knowledge_map
-            ],
-            "core_concepts": [{"chapter": c.chapter, "concepts": c.concepts} for c in self.core_concepts],
-            "confusion_points": [{"a": c.a, "b": c.b, "difference": c.difference} for c in self.confusion_points],
-            "self_test_questions": [
-                {"question": q.question, "hint": q.hint, "reference_answer": q.reference_answer}
-                for q in self.self_test_questions
-            ],
-            "exam_mapping": [
-                {"exam_topic": e.exam_topic, "knowledge_points": e.knowledge_points}
-                for e in self.exam_mapping
-            ],
-            "priority_advice": self.priority_advice,
-            "citations": [c.to_dict() for c in self.citations],
-            "needs_review": self.needs_review,
-            "insufficient_material": self.insufficient_material,
-        }
-
-    def completeness(self) -> Dict[str, bool]:
-        checks = {
-            "scope": bool(self.scope),
-            "knowledge_map": bool(self.knowledge_map),
-            "core_concepts": bool(self.core_concepts),
-            "confusion_points": bool(self.confusion_points),
-            "self_test_questions": bool(self.self_test_questions),
-            "exam_mapping": bool(self.exam_mapping),
-            "priority_advice": bool(self.priority_advice),
-        }
-        # Knowledge-map check: at least one node should express dependencies.
-        has_dependency = any(
-            n.depends_on or n.prerequisite_of for n in self.knowledge_map
-        )
-        checks["knowledge_map_has_dependencies"] = has_dependency
-        checks["complete"] = all(checks.values())
-        return checks
-
-
-@dataclass
-class CheatsheetItem:
-    """A single cheat-sheet entry (definition/formula/step/comparison/example)."""
-    item_type: str = "definition"  # definition|formula|step|comparison|example
-    label: str = ""
-    content: str = ""
-    source: Optional[Citation] = None
-
-
-@dataclass
-class CheatsheetSection:
-    """A headed section of a cheat sheet."""
-    heading: str = ""
-    items: List[CheatsheetItem] = field(default_factory=list)
-
-
-@dataclass
-class GeneratedCheatsheet:
-    """
-    Structured output for the '两页 cheat sheet' task (Phase 3).
-
-    Maps to the product plan's MVP schema (section 3.3 D): structured two-page
-    content, layout notes, compression advice and a within_page_limit flag.
-    """
-    task_type: TeachingTask = TeachingTask.CHEATSHEET
-    title: str = ""
-    scope: str = ""
-    sections: List[CheatsheetSection] = field(default_factory=list)
-    layout_notes: List[str] = field(default_factory=list)
-    compression_advice: List[str] = field(default_factory=list)
-    within_page_limit: bool = True
-    citations: List[Citation] = field(default_factory=list)
-    needs_review: List[str] = field(default_factory=list)
-    insufficient_material: bool = False
-    raw_output: str = ""
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "task_type": self.task_type.value,
-            "title": self.title,
-            "scope": self.scope,
-            "sections": [
-                {
-                    "heading": s.heading,
-                    "items": [
-                        {
-                            "type": i.item_type,
-                            "label": i.label,
-                            "content": i.content,
-                            "source": i.source.to_dict() if i.source else None,
-                        }
-                        for i in s.items
-                    ],
-                }
-                for s in self.sections
-            ],
-            "layout_notes": self.layout_notes,
-            "compression_advice": self.compression_advice,
-            "within_page_limit": self.within_page_limit,
-            "citations": [c.to_dict() for c in self.citations],
-            "needs_review": self.needs_review,
-            "insufficient_material": self.insufficient_material,
-        }
-
-    def completeness(self) -> Dict[str, bool]:
-        checks = {
-            "title": bool(self.title),
-            "scope": bool(self.scope),
-            "sections": bool(self.sections),
-            "layout_notes": bool(self.layout_notes),
-            "compression_advice": bool(self.compression_advice),
-        }
-        checks["complete"] = all(checks.values())
-        return checks
-
-
-@dataclass
-class MappedKnowledgePoint:
-    """A knowledge point matched to an exam topic, with evidence."""
-    name: str = ""
-    chapter: str = ""
-    relevance: str = ""
-    evidence: List[Citation] = field(default_factory=list)
-
-
-@dataclass
-class ExamKnowledgeMapping:
-    """
-    Structured output for the '真题知识点映射' task (Phase 3).
-
-    Maps an exam question/考点 to course knowledge points and flags any gap
-    that the course materials do not cover.
-    """
-    task_type: TeachingTask = TeachingTask.EXAM_MAPPING
-    exam_topic: str = ""
-    knowledge_points: List[MappedKnowledgePoint] = field(default_factory=list)
-    coverage_gap: str = ""
-    needs_review: List[str] = field(default_factory=list)
-    insufficient_material: bool = False
-    raw_output: str = ""
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "task_type": self.task_type.value,
-            "exam_topic": self.exam_topic,
-            "knowledge_points": [
-                {
-                    "name": k.name,
-                    "chapter": k.chapter,
-                    "relevance": k.relevance,
-                    "evidence": [c.to_dict() for c in k.evidence],
-                }
-                for k in self.knowledge_points
-            ],
-            "coverage_gap": self.coverage_gap,
-            "needs_review": self.needs_review,
-            "insufficient_material": self.insufficient_material,
-        }
-
-    def completeness(self) -> Dict[str, bool]:
-        checks = {
-            "exam_topic": bool(self.exam_topic),
-            "knowledge_points": bool(self.knowledge_points),
-        }
-        has_evidence = any(k.evidence for k in self.knowledge_points)
-        checks["has_evidence"] = has_evidence
         checks["complete"] = all(checks.values())
         return checks

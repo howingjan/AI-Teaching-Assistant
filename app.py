@@ -1,18 +1,17 @@
 """
-AI 教学助手 - Streamlit 教师工作台（Phase 4 UI）
+AI 教学助手 - Streamlit 教师工作台（扁平化版）
 
-产品规划第 5 节定义的本地面板，包含三大区域：
+两个页面：
 
-  📚 资料库   - 查看/上传课程资料、索引统计、检索结果可视化
-  🎯 教学任务 - 五个常用教学任务入口（本周备课/作业讲题/期末复习/速查表/真题映射）
-  📄 生成结果 - 结构化展示、来源引用、需确认项、老师编辑与导出（MD/JSON/HTML）
-  📊 评测与失败 - 自动化评测报告与失败案例库（Phase 4 可靠性交付物）
+  📚 资料库   - 查看课程资料、上传/刷新 PDF、重建索引
+  🎯 教学任务 - 多选资料范围，生成「备课 / 期末复习」或「作业讲题」，
+                结果内联展示、编辑与导出（MD/JSON/HTML）
 
 启动：
     source AIvenv312/bin/activate
     streamlit run app.py
 
-需要配置 DEEPSEEK_API_KEY（.env）才能真实生成；未配置时自动进入 mock 模式。
+真实生成必须配置 DEEPSEEK_API_KEY（.env）；未配置时生成会报错提示。
 """
 
 from __future__ import annotations
@@ -30,7 +29,6 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.core.config import Config
 from src.core.models import TeachingTask
 from src.document.document_loader import DocumentLoader
-from src.eval.failure_library import FailureLibrary
 from src.eval.monitor import UsageMonitor
 from src.rag.llm_client import LLMClient
 from src.rag.pipeline import RAGPipeline
@@ -48,21 +46,22 @@ st.set_page_config(
 )
 
 TASK_LABELS = {
-    "lesson": "📖 本周备课",
+    "lesson": "📖 备课 / 期末复习",
     "problem_solving": "✏️ 作业讲题",
-    "review": "🎓 期末复习",
-    "cheatsheet": "📋 速查表",
-    "exam_mapping": "🗺️ 真题映射",
 }
 
-COURSES = [d.name for d in (Config.DATA_DIR).iterdir() if d.is_dir()] or ["COMP5310"]
+# 只把 data/ 下的课程目录当作可选课程，过滤 index/output 等系统目录
+COURSES = [
+    d.name
+    for d in Config.DATA_DIR.iterdir()
+    if d.is_dir() and d.name not in {Config.INDEX_DIR.name, Config.OUTPUT_DIR.name}
+] or ["COMP5310"]
 
 
 def _init_state() -> None:
     """Initialize persistent session state."""
     defaults = {
         "course": "COMP5310" if "COMP5310" in COURSES else COURSES[0],
-        "retriever_type": "tfidf",
         "reload_token": 0,
         "last_result": None,
         "last_md": "",
@@ -78,24 +77,31 @@ _init_state()
 
 
 @st.cache_resource(show_spinner="加载课程知识库…")
-def get_knowledge_base(course: str, retriever_type: str, reload_token: int = 0):
-    """Load (or build) the course index and create the selected retriever."""
+def get_knowledge_base(course: str, reload_token: int = 0):
+    """Load (or build) the course index and create the embedding retriever."""
     loader = DocumentLoader(index_name=course)
+    course_path = Config.DATA_DIR / course
     if not loader.chunks:
-        course_path = Config.DATA_DIR / course
+        # 首次构建：整目录解析并落盘索引
         if course_path.exists():
             loader.load_documents_from_directory(str(course_path))
             loader.save_index()
-
-    if retriever_type == "embedding":
-        retriever = RetrieverFactory.create(
-            "embedding",
-            loader.chunks,
-            loader.documents,
-            cache_path=str(Config.get_embedding_cache_path(course)),
-        )
     else:
-        retriever = RetrieverFactory.create("tfidf", loader.chunks, loader.documents)
+        # 索引已存在：把磁盘上新增的课件（含 uploads/）合并进索引。
+        # 用 getattr 做保护：若长驻进程加载的是旧版模块（无 sync_directory），
+        # 退化为仅从磁盘索引加载，避免 AttributeError 中断页面。
+        sync = getattr(loader, "sync_directory", None)
+        if callable(sync) and course_path.exists():
+            added_docs, _ = sync(str(course_path))
+            if added_docs:
+                loader.save_index()
+
+    retriever = RetrieverFactory.create(
+        "embedding",
+        loader.chunks,
+        loader.documents,
+        cache_path=str(Config.get_embedding_cache_path(course)),
+    )
     return loader, retriever
 
 
@@ -110,7 +116,16 @@ def get_pipeline(loader, retriever, monitor: UsageMonitor) -> RAGPipeline:
 
 
 def api_status() -> str:
-    return "🟢 真实生成" if LLMClient().available else "🟡 mock 模式（未配置 API key）"
+    return "🟢 真实生成" if LLMClient().available else "❌ 未配置 API key（需先配置才能生成）"
+
+
+def refresh_knowledge_base(message: str = "") -> None:
+    """Force a full rebuild of the knowledge base and re-render the page."""
+    st.session_state.reload_token += 1
+    get_knowledge_base.clear()
+    if message:
+        st.session_state["_toast"] = message
+    st.rerun()
 
 
 def doc_name(documents: dict, doc_id: str) -> str:
@@ -126,28 +141,27 @@ def render_sidebar() -> str:
     st.sidebar.title("🎓 AI 教学助手")
     st.sidebar.caption("课程资料驱动的中文备课工作台")
 
-    with st.sidebar.expander("⚙️ 全局设置", expanded=True):
-        course = st.selectbox("课程", COURSES, index=COURSES.index(st.session_state.course) if st.session_state.course in COURSES else 0)
-        retriever_type = st.radio(
-            "检索方式",
-            ["tfidf", "embedding"],
-            index=0,
-            format_func=lambda x: "🔤 TF-IDF（快，精确匹配）" if x == "tfidf" else "🧠 Embedding（跨语言语义）",
-        )
-        st.session_state.course = course
-        st.session_state.retriever_type = retriever_type
+    # 课程标签与下拉框直接放在标题下方（不再使用「全局设置」折叠框）
+    st.sidebar.markdown("**课程**")
+    course = st.sidebar.selectbox(
+        "选择课程",
+        COURSES,
+        index=COURSES.index(st.session_state.course) if st.session_state.course in COURSES else 0,
+        label_visibility="collapsed",
+    )
+    st.session_state.course = course
 
     st.sidebar.divider()
     st.sidebar.markdown(f"**模型状态**：{api_status()}")
-    st.sidebar.caption("· API key 存放在 .env，不会写入代码、日志或导出材料")
+    st.sidebar.caption(f"· 真实生成使用 {Config.llm.model}；API key 存放在 .env")
 
     page = st.sidebar.radio(
         "功能导航",
-        ["📚 资料库", "🎯 教学任务", "📄 生成结果", "📊 评测与失败案例"],
+        ["📚 资料库", "🎯 教学任务"],
         key="nav",
     )
     st.sidebar.divider()
-    st.sidebar.caption("Phase 1-3 核心 + Phase 4 UI / 评测 / 失败案例库")
+    st.sidebar.caption("隐私说明：原始资料仅保存在本地 data/ 目录，可随时删除。")
     return page
 
 
@@ -155,113 +169,94 @@ def render_sidebar() -> str:
 # 页面 1：资料库
 # ---------------------------------------------------------------------------
 
-def page_library(loader, retriever) -> None:
+def page_library(loader) -> None:
     st.subheader("📚 资料库")
+
+    toast = st.session_state.pop("_toast", None)
+    if toast:
+        st.success(toast)
+
     stats = loader.get_index_stats()
     c1, c2, c3 = st.columns(3)
     c1.metric("课程文档", stats["total_documents"])
     c2.metric("知识片段（chunks）", stats["total_chunks"])
     c3.metric("索引更新时间", stats["last_updated"][:16])
 
-    tab_docs, tab_search, tab_upload = st.tabs(["📁 文档清单", "🔍 检索可视化", "⬆️ 上传资料"])
+    header_col, refresh_col = st.columns([6, 1])
+    header_col.markdown("##### 📁 文档清单")
+    if refresh_col.button("🔄 刷新", help="重新扫描 data/ 目录并刷新文档清单", use_container_width=True):
+        refresh_knowledge_base()
 
-    # ---- 文档清单 ----
-    with tab_docs:
-        rows = []
-        for doc_id, doc in loader.documents.items():
-            info = loader.get_document_info(doc_id)
-            rows.append({
-                "文件": doc.file_name,
-                "类型": doc.document_type.value,
-                "页数": doc.total_pages or 1,
-                "解析质量": doc.parse_quality.value,
-                "片段数": info["total_chunks"],
-                "ID": doc_id,
-            })
-        if rows:
-            st.dataframe(rows, width="stretch", hide_index=True)
-            st.caption("解析质量：good=正常 · partial=部分 · scanned=扫描页 · empty=空页")
-        else:
-            st.info("知识库为空。请到「⬆️ 上传资料」页面上传课件 PDF / Markdown / 文本。")
+    rows = []
+    for doc_id, doc in loader.documents.items():
+        info = loader.get_document_info(doc_id)
+        rows.append({
+            "文件": doc.file_name,
+            "类型": doc.document_type.value,
+            "页数": doc.total_pages or 1,
+            "解析质量": doc.parse_quality.value,
+            "片段数": info["total_chunks"],
+        })
+    if rows:
+        st.dataframe(rows, width="stretch", hide_index=True)
+        st.caption("解析质量：good=正常 · partial=部分 · scanned=扫描页 · empty=空页")
+    else:
+        st.info("知识库为空。请上传课件 PDF。")
 
-        st.markdown("##### 文档内部结构")
-        doc_id = st.selectbox(
-            "选择文档查看章节结构",
-            list(loader.documents.keys()),
-            format_func=lambda d: doc_name(loader.documents, d),
-        )
-        if doc_id:
-            structure = loader.get_document_structure(doc_id)
-            st.json({
-                "sections": structure["sections"],
-                "parse_quality": structure["parse_quality"],
-                "total_chunks": structure["total_chunks"],
-            })
+    st.markdown("##### ⬆️ 上传资料（仅 PDF）")
+    uploaded = st.file_uploader("选择课程资料 PDF", type=["pdf"])
+    if uploaded is not None and st.button("解析并加入知识库", type="primary"):
+        upload_dir = Config.DATA_DIR / st.session_state.course / "uploads"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        dest = upload_dir / uploaded.name
+        dest.write_bytes(uploaded.getbuffer())
 
-    # ---- 检索可视化 ----
-    with tab_search:
-        st.markdown("输入任意问题（中英文均可），查看系统会检索到哪些课件片段。")
-        q_col, k_col, b_col = st.columns([4, 1, 1])
-        query = q_col.text_input("查询", placeholder="例如：missing value / 数据探索 / 缺失值")
-        top_k = k_col.slider("Top-K", 1, 10, 5)
-        do_search = b_col.button("检索", type="primary", width="stretch")
-
-        if do_search and query.strip():
-            results = retriever.search(query, top_k=top_k)
-            if not results:
-                st.warning("没有检索到相关片段。可以尝试换成英文/关键词，或切换到 Embedding 检索。")
-            for r in results:
-                with st.expander(
-                    f"{doc_name(loader.documents, r.chunk.document_id)} · 第 {r.chunk.page_number} 页 · 相似度 {r.score:.3f}"
-                ):
-                    st.caption(r.reasoning or "")
-                    st.write(r.chunk.text)
-
-    # ---- 上传 ----
-    with tab_upload:
-        st.markdown("支持 **PDF / Markdown / 纯文本**，上传后自动解析并重建索引。")
-        uploaded = st.file_uploader(
-            "选择课程资料文件",
-            type=["pdf", "md", "txt", "markdown"],
-        )
-        if uploaded is not None and st.button("解析并加入知识库", type="primary"):
-            upload_dir = Config.DATA_DIR / st.session_state.course / "uploads"
-            upload_dir.mkdir(parents=True, exist_ok=True)
-            dest = upload_dir / uploaded.name
-            dest.write_bytes(uploaded.getbuffer())
-
-            try:
-                # Build a temp loader to parse without disturbing cache state,
-                # then force a full reload by bumping the reload token.
-                temp_loader = DocumentLoader(index_name=st.session_state.course)
-                doc, chunks = temp_loader.load_document(str(dest))
-                st.session_state.reload_token += 1
-                get_knowledge_base.clear()
-                st.success(f"✅ 已解析 {doc.file_name}（{len(chunks)} 个片段）。知识库已重建。")
-            except Exception as exc:  # noqa: BLE001
-                st.error(f"解析失败：{exc}")
-                st.caption("该文件可能已损坏，或格式暂不支持。详见失败案例库。")
-                lib = FailureLibrary()
-                lib.add(
-                    "parse_error",
-                    f"上传解析失败：{uploaded.name}",
-                    description=str(exc),
-                    how_detected="UI 上传流程捕获异常",
-                    root_cause="待分析：文件损坏 / 扫描件 / 不支持格式",
-                    resolution="检查文件；扫描件需先做 OCR",
-                    course=st.session_state.course,
-                    evidence_path=str(dest),
-                )
-                lib.save()
+        try:
+            # 直接加入当前已加载的 loader 并落盘索引，再整体重建知识库，
+            # 这样新文档会立即出现在文档清单中，检索与引用也可用。
+            doc, chunks = loader.load_document(str(dest))
+            loader.save_index()
+            refresh_knowledge_base(f"✅ 已解析 {doc.file_name}（{len(chunks)} 个片段），知识库已刷新。")
+        except Exception as exc:  # noqa: BLE001
+            st.error(f"解析失败：{exc}")
+            st.caption("该文件可能已损坏，或不是可解析的 PDF。")
 
 
 # ---------------------------------------------------------------------------
 # 页面 2：教学任务
 # ---------------------------------------------------------------------------
 
-def page_tasks(pipeline) -> None:
+def page_tasks(pipeline, loader) -> None:
     st.subheader("🎯 教学任务")
-    st.caption("不要从空白聊天框开始——直接选择老师最常用的教学任务。")
+    st.caption("先多选「资料范围」再选任务。备课会覆盖所选资料的完整知识点；期末复习只需勾选全选全部资料。")
+
+    docs = list(loader.documents.values())
+    if not docs:
+        st.info("知识库为空。请先在「📚 资料库」上传 PDF。")
+        return
+
+    doc_by_name = {d.file_name: d for d in docs}
+    # 文件按文件名排序；默认预选最后一个文件（如最新的课件）
+    all_names = sorted((d.file_name for d in docs), key=lambda s: s.casefold())
+
+    # ---- 资料范围：可多选；期末复习 = 全选全部资料 ----
+    review_all = st.toggle(
+        "🎓 期末复习（全选全部资料，覆盖整学期）",
+        value=False,
+        help="期末复习已并入备课：勾选后自动选中全部课件，生成覆盖整学期知识点的复习/备课材料。",
+    )
+    if review_all:
+        chosen_names = list(all_names)
+        document_ids = [d.document_id for d in docs]
+        st.caption(f"期末复习模式：已全选 {len(all_names)} 份资料。")
+    else:
+        chosen_names = st.multiselect(
+            "📚 资料范围（可多选；生成将覆盖所选资料的完整知识点）",
+            all_names,
+            default=[all_names[-1]] if all_names else [],
+        )
+        document_ids = [doc_by_name[n].document_id for n in chosen_names] or None
+        st.caption(f"已选 {len(chosen_names)} 份资料作为本次内容范围。")
 
     task = st.segmented_control(
         "选择任务",
@@ -272,12 +267,21 @@ def page_tasks(pipeline) -> None:
     )
 
     if task == "lesson":
+        # 不再需要「本周主题」：内容与主题完全由所选资料决定
+        duration_h = st.number_input(
+            "课堂时长（小时）",
+            min_value=0.5,
+            max_value=12.0,
+            value=2.0,
+            step=0.5,
+            help="课堂时长越长，生成的讲义内容越详实。",
+        )
         inputs = {
-            "topic": st.text_input("本周主题", value="data exploration / 数据探索"),
+            "topic": "",
             "student_level": st.selectbox("学生水平", ["初学者", "有一定基础", "考前冲刺"], index=0),
-            "duration": st.selectbox("课堂时长", ["45 分钟", "1 小时", "1.5 小时", "2 小时"], index=1),
+            "duration": f"{duration_h:g} 小时",
         }
-    elif task == "problem_solving":
+    else:  # problem_solving
         inputs = {
             "problem_text": st.text_area(
                 "题目文本（作业/真题）",
@@ -290,47 +294,35 @@ def page_tasks(pipeline) -> None:
             ),
             "goal": st.text_input("讲解目标", value="讲解解题思路，不代写答案"),
         }
-    elif task == "review":
-        inputs = {
-            "scope": st.text_input("复习范围", value="data exploration, ETL and data cleaning"),
-            "student_level": st.selectbox("学生水平", ["初学者", "有一定基础", "考前冲刺"], index=2),
-        }
-    elif task == "cheatsheet":
-        inputs = {
-            "scope": st.text_input("速查表范围", value="data exploration, data types and ETL"),
-            "page_limit": st.selectbox("篇幅限制", ["两页", "一页", "三页"], index=0),
-            "allowed": st.text_input("允许携带内容", value="允许携带课程讲义与公式表"),
-        }
-    else:  # exam_mapping
-        inputs = {
-            "exam_topic": st.text_area(
-                "真题 / 考点",
-                value=(
-                    "What are the four levels of data measurement (nominal, ordinal, "
-                    "interval, ratio) and why do they matter for choosing statistics and charts?"
-                ),
-                height=100,
-            )
-        }
+
+    # ---- 自定义输出要求（可选）----
+    customize = st.checkbox(
+        "✍️ 自定义输出结果（可选）",
+        help="勾选后可在下方输入你对生成结果的额外指令，系统会把它附加到提示词中一起发给模型。",
+    )
+    custom_prompt = ""
+    if customize:
+        custom_prompt = st.text_area(
+            "自定义输出指令",
+            placeholder="例如：重点讲清 JOIN 的底层代价并多用中文类比；或者：先给反例再讲正确做法……",
+            height=120,
+        ).strip()
+    inputs["extra"] = custom_prompt
 
     if st.button("🚀 生成教学材料", type="primary", width="stretch"):
-        with st.spinner("正在检索课程资料并生成…"):
+        if not document_ids:
+            st.warning("请选择至少一份资料，或勾选「期末复习（全选全部资料）」。")
+            return
+        with st.spinner("正在整理所选资料并真实生成…"):
             try:
-                result = pipeline.generate_task(TeachingTask(task), inputs)
+                result = pipeline.generate_task(
+                    TeachingTask(task),
+                    inputs,
+                    document_ids=document_ids,
+                    scope_names=chosen_names if task == "lesson" else None,
+                )
             except Exception as exc:  # noqa: BLE001
                 st.error(f"生成失败：{exc}")
-                lib = FailureLibrary()
-                lib.add(
-                    "pipeline_error",
-                    f"生成失败：{TASK_LABELS[task]}",
-                    description=str(exc),
-                    how_detected="UI 生成流程捕获异常",
-                    root_cause="待分析",
-                    resolution="重试；检查 API key 与网络",
-                    course=st.session_state.course,
-                    task=task,
-                )
-                lib.save()
                 return
 
         st.session_state.last_result = result
@@ -338,80 +330,60 @@ def page_tasks(pipeline) -> None:
         st.session_state.last_usage = getattr(pipeline.monitor, "last_record", None)
         st.session_state.last_md = pipeline.export_markdown(result) if task == "lesson" else pipeline._render_markdown(result)
 
-        st.success("✅ 生成完成！请到「📄 生成结果」页审核、编辑与导出。")
-        if st.button("前往生成结果页 👉"):
-            st.session_state.nav = "📄 生成结果"
-            st.rerun()
+        st.success("✅ 生成完成！结果见下方。")
 
-        _preview_result(result, pipeline)
+    _render_result(pipeline)
 
 
 # ---------------------------------------------------------------------------
-# 页面 3：生成结果
+# 内联生成结果：预览 / 编辑 / 来源引用 / 导出
 # ---------------------------------------------------------------------------
 
-def _preview_result(result, pipeline) -> None:
-    """Inline structured preview used right after generation."""
-    if getattr(result, "insufficient_material", False):
-        st.warning("⚠️ 资料不足：检索到的课程内容较少，请老师核对补充后再使用。")
-    for note in getattr(result, "needs_review", []) or []:
-        st.warning(f"⚠️ {note}")
-    st.markdown(st.session_state.last_md, unsafe_allow_html=False)
-
-
-def page_result(pipeline) -> None:
-    st.subheader("📄 生成结果")
+def _render_result(pipeline) -> None:
+    """Inline result preview/edit/export shown right below the task form."""
     result = st.session_state.get("last_result")
     if result is None:
-        st.info("还没有生成结果。请先到「🎯 教学任务」页生成一份教学材料。")
         return
 
     task = st.session_state.get("last_task", "")
+    st.divider()
+    st.subheader("📄 生成结果")
     st.caption(f"任务：{TASK_LABELS.get(task, task)}")
 
-    # 成本与延迟（Phase 4 监控）
     usage = st.session_state.get("last_usage")
     if usage is not None:
-        mode = "🟢 真实" if usage.mode == "real" else "🟡 mock"
-        cols = st.columns(4)
-        cols[0].metric("模式", mode)
-        cols[1].metric("耗时", f"{usage.latency_s:.2f}s")
-        cols[2].metric("Tokens", usage.total_tokens)
-        cols[3].metric("预估成本", f"${usage.cost_usd:.6f}")
+        cols = st.columns(3)
+        cols[0].metric("耗时", f"{usage.latency_s:.2f}s")
+        cols[1].metric("Tokens", usage.total_tokens)
+        cols[2].metric("预估成本", f"${usage.cost_usd:.6f}")
 
     if getattr(result, "insufficient_material", False):
         st.warning("⚠️ 资料不足：检索结果较少，请老师核对补充。")
     for note in getattr(result, "needs_review", []) or []:
         st.warning(f"⚠️ {note}")
 
-    tab_view, tab_edit = st.tabs(["👁️ 预览", "✏️ 编辑"])
-
-    with tab_view:
-        st.markdown(st.session_state.last_md)
-
-    with tab_edit:
-        edited = st.text_area(
+    edit_mode = st.checkbox("✏️ 编辑模式（直接修改 Markdown）")
+    if edit_mode:
+        st.session_state.last_md = st.text_area(
             "老师可以直接修改内容（Markdown）",
             value=st.session_state.last_md,
             height=420,
         )
-        st.session_state.last_md = edited
         st.caption("修改后使用下方按钮导出。最终内容由老师审核后用于课堂。")
+    else:
+        st.markdown(st.session_state.last_md, unsafe_allow_html=False)
 
-    # 来源引用（可展开查看原文片段）
     citations = getattr(result, "citations", []) or []
     if citations:
         with st.expander(f"🔗 来源引用（{len(citations)} 条，点击展开原文）"):
             for c in citations:
                 snippet = getattr(c, "snippet", None) or ""
-                st.markdown(
-                    f"**{doc_name(pipeline.documents, c.document_id)}** · 第 {c.page} 页"
-                )
+                chunk_tag = f" · 片段 `{c.chunk_id}`" if getattr(c, "chunk_id", None) else ""
+                st.markdown(f"**{doc_name(pipeline.documents, c.document_id)}** · 第 {c.page} 页{chunk_tag}")
                 if snippet:
                     st.caption(snippet[:220])
                 st.divider()
 
-    # 导出
     st.markdown("##### 📤 导出")
     filename = pipeline._safe_name(
         getattr(result, "topic", "") or getattr(result, "title", "") or getattr(result, "scope", "") or "teaching_material"
@@ -427,53 +399,6 @@ def page_result(pipeline) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 页面 4：评测与失败案例
-# ---------------------------------------------------------------------------
-
-def page_quality(loader, retriever) -> None:
-    st.subheader("📊 评测与失败案例（Phase 4 可靠性）")
-
-    tab_report, tab_failures, tab_run = st.tabs(["📈 最新评测报告", "🗂️ 失败案例库", "▶️ 运行评测"])
-
-    with tab_report:
-        report_path = Config.get_output_path("phase4_evaluation_report.md", subdir="eval")
-        if report_path.exists():
-            st.markdown(report_path.read_text(encoding="utf-8"))
-        else:
-            st.info("还没有评测报告。到「▶️ 运行评测」标签页生成。")
-
-    with tab_failures:
-        lib = FailureLibrary()
-        st.markdown(f"**当前共 {len(lib.records)} 条失败案例**（产品规划 7.3：必须保留失败案例）")
-        st.markdown(lib.to_markdown())
-
-    with tab_run:
-        st.markdown(
-            "运行标准评测问题集（7 个用例，含资料外拒答测试）。"
-            "需要调用 LLM，未配置 API key 时以 mock 模式运行。"
-        )
-        if st.button("🚀 运行评测", type="primary"):
-            from src.eval.case_sets import build_standard_cases
-            from src.eval.evaluator import TaskEvaluator
-
-            monitor = UsageMonitor()
-            pipeline = get_pipeline(loader, retriever, monitor)
-            with st.spinner("正在运行评测（约需数分钟）…"):
-                evaluator = TaskEvaluator(documents=loader.documents, chunks=loader.chunks)
-                report = evaluator.evaluate(pipeline, build_standard_cases())
-
-            md_path = Config.get_output_path("phase4_evaluation_report.md", subdir="eval")
-            js_path = Config.get_output_path("phase4_evaluation_report.json", subdir="eval")
-            md_path.write_text(report.to_markdown() + "\n## 成本与延迟明细\n\n" + monitor.to_markdown() + "\n", encoding="utf-8")
-            data = report.to_dict()
-            data["usage"] = monitor.aggregate().to_dict()
-            js_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-
-            st.success(f"评测完成！报告已保存：\n`{md_path}`")
-            st.markdown(report.to_markdown())
-
-
-# ---------------------------------------------------------------------------
 # 主入口
 # ---------------------------------------------------------------------------
 
@@ -482,25 +407,15 @@ def main() -> None:
 
     loader, retriever = get_knowledge_base(
         st.session_state.course,
-        st.session_state.retriever_type,
         st.session_state.reload_token,
     )
 
     if page == "📚 资料库":
-        page_library(loader, retriever)
-    elif page == "🎯 教学任务":
+        page_library(loader)
+    else:
         monitor = UsageMonitor(persist_path=None)  # UI 内不持久化，仅展示
         pipeline = get_pipeline(loader, retriever, monitor)
-        page_tasks(pipeline)
-    elif page == "📄 生成结果":
-        monitor = UsageMonitor(persist_path=None)
-        pipeline = get_pipeline(loader, retriever, monitor)
-        page_result(pipeline)
-    else:
-        page_quality(loader, retriever)
-
-    st.sidebar.caption("---")
-    st.sidebar.caption("隐私说明：原始资料仅保存在本地 data/ 目录，可随时删除。")
+        page_tasks(pipeline, loader)
 
 
 if __name__ == "__main__":

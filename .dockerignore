@@ -1,0 +1,28 @@
+# Git / 工具
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+.streamlit
+
+# 虚拟环境 / Python 产物
+AIvenv
+AIvenv312
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+htmlcov
+
+# 敏感数据（不进镜像，运行时通过卷挂载）
+.env
+.env.*
+!.env.example
+data
+logs
+
+# 文档与测试（镜像内不需要）
+docs
+tests
+*.ipynb

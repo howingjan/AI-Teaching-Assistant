@@ -6,7 +6,7 @@ import json
 import unittest
 
 from src.core.models import Document, DocumentType, Chunk, Citation
-from src.retrieval.retriever import TFIDFRetriever
+from conftest import TestRetriever
 from src.rag.llm_client import LLMClient, parse_json_response
 from src.rag.citation_validator import CitationValidator
 from src.rag.pipeline import RAGPipeline
@@ -61,15 +61,13 @@ class TestParseJSONResponse(unittest.TestCase):
             parse_json_response("not json at all")
 
 
-class TestLLCMock(unittest.TestCase):
-    def test_mock_generate_returns_valid_json(self):
-        # Empty string (not None) bypasses the config fallback and forces mock mode
+class TestLLCNoKey(unittest.TestCase):
+    def test_generate_without_key_raises(self):
+        # Mock mode was removed: without an API key generation must fail loudly.
         client = LLMClient(api_key="")
         self.assertFalse(client.available)
-        raw = client.generate([{"role": "user", "content": "【本周主题】递归"}])
-        data = json.loads(raw)
-        self.assertIn("topic", data)
-        self.assertEqual(data["topic"], "递归")
+        with self.assertRaises(RuntimeError):
+            client.generate([{"role": "user", "content": "hello"}])
 
 
 class TestCitationValidator(unittest.TestCase):
@@ -109,7 +107,7 @@ class TestCitationValidator(unittest.TestCase):
 class TestRAGPipeline(unittest.TestCase):
     def setUp(self):
         self.docs, self.chunks = make_corpus()
-        self.retriever = TFIDFRetriever(self.chunks, self.docs)
+        self.retriever = TestRetriever(self.chunks, self.docs)
 
     def test_generate_lesson_structure(self):
         response = {

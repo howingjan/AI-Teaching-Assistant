@@ -21,19 +21,19 @@ load_dotenv(PROJECT_ROOT / ".env")
 class DocumentConfig:
     """Configuration for document processing."""
     max_chars_per_page: int = 5000  # Truncate very long pages
-    chunk_max_tokens: int = 1000  # Approximate max tokens per chunk
+    chunk_max_tokens: int = 400  # Per-chunk token budget (fits e5-small 512-token limit)
     chunk_overlap_sentences: int = 2  # Overlap for context continuity
     supported_formats: list = None
-    
+
     def __post_init__(self):
         if self.supported_formats is None:
-            self.supported_formats = ['.pdf', '.txt', '.md']
+            self.supported_formats = ['.pdf']  # 课程资料仅支持 PDF
 
 
 @dataclass
 class RetrieverConfig:
     """Configuration for document retrieval."""
-    retriever_type: str = "embedding"  # "tfidf", "bm25", or "embedding"
+    retriever_type: str = "embedding"  # 固定使用 embedding 检索
     top_k: int = 5  # Number of results to return
     score_threshold: float = 0.0  # Minimum score threshold
     max_context_chars: int = 3000  # Max total chars in context
@@ -46,7 +46,7 @@ class LLMConfig:
     provider: str = "deepseek"  # "deepseek", "openai", etc.
     model: str = "deepseek-chat"
     temperature: float = 0.7
-    max_tokens: int = 2048
+    max_tokens: int = 8192
     api_base_url: str = "https://api.deepseek.com"
     timeout_seconds: int = 60
     retry_count: int = 3

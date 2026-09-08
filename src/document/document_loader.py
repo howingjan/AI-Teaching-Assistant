@@ -227,7 +227,49 @@ class DocumentLoader:
                     continue
         
         return documents, all_chunks
-    
+
+    def sync_directory(self, directory: str) -> Tuple[List[Document], List[Chunk]]:
+        """
+        Merge supported files found on disk that are not yet indexed.
+
+        Unlike ``load_documents_from_directory`` (a full rebuild), this keeps the
+        existing in-memory corpus and only parses *new* files, so course materials
+        uploaded via the UI (or dropped into ``data/<course>/`` externally) can be
+        merged into an existing index. Returns (new_documents, new_chunks).
+        """
+        dir_path = Path(directory)
+        if not dir_path.is_dir():
+            return [], []
+
+        existing_paths = {Path(d.file_path).resolve() for d in self.documents.values()}
+        added_docs: List[Document] = []
+        added_chunks: List[Chunk] = []
+
+        for file_path in sorted(dir_path.rglob("*")):
+            if not (
+                file_path.is_file()
+                and file_path.suffix.lower() in Config.document.supported_formats
+            ):
+                continue
+            if Path(file_path).resolve() in existing_paths:
+                continue
+            try:
+                doc, chunks = self.load_document(str(file_path))
+                if chunks:
+                    added_docs.append(doc)
+                    added_chunks.extend(chunks)
+                    existing_paths.add(Path(file_path).resolve())
+            except Exception as exc:  # noqa: BLE001
+                logger.error(f"Failed to load {file_path}: {exc}")
+                continue
+
+        if added_docs:
+            logger.info(
+                f"sync_directory: added {len(added_docs)} new document(s) from {directory}"
+            )
+            self.metadata.last_updated = datetime.now()
+        return added_docs, added_chunks
+
     def get_document_info(self, document_id: str) -> dict:
         """
         Get information about a loaded document.

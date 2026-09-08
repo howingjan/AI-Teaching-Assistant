@@ -19,6 +19,7 @@ build/
 # 虚拟环境
 AIvenv/
 AIvenv312/
+.venv/
 venv/
 env/
 
