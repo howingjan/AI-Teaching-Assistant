@@ -33,7 +33,7 @@ class DocumentConfig:
 @dataclass
 class RetrieverConfig:
     """Configuration for document retrieval."""
-    retriever_type: str = "embedding"  # 固定使用 embedding 检索
+    retriever_type: str = "hybrid"  # Dense embedding + BM25 keyword retrieval
     top_k: int = 5  # Number of results to return
     score_threshold: float = 0.0  # Minimum score threshold
     max_context_chars: int = 3000  # Max total chars in context

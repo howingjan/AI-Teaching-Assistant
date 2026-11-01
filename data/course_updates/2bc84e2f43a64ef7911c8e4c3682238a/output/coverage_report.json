@@ -1,0 +1,1441 @@
+[
+  {
+    "topic_id": "T001",
+    "topic": "监督学习与预测建模概述",
+    "description": "监督机器学习任务包括简单线性回归、多元线性回归、逻辑回归、决策树和朴素贝叶斯。预测建模从可用数据中预测结果，学习函数 Ŷ=f(X)，X 为输入特征，Y 为实际目标值，Ŷ 为预测目标值；Y 为数值时是回归，Y 为类别时是分类。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_2_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 3,
+        "section": null,
+        "excerpt": "Supervised Learning:\n– We’ll now focus on supervised machine learning techniques\n– Simple linear regression\n– Multiple linear regression\n– Logistic regression\n– Decision tree\n– Naïve Bayes\nThe University of Sydney Page 3"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_4_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 5,
+        "section": null,
+        "excerpt": "Predictive Modelling\n– Many data science problems\nCarbon Purity involve predicting an outcome\nRefund Status Income Cheat\nlevel(%) (%)\nYes Single 125K No from available data. 0. 99 90. 01\n෠\nNo Married 100K No 𝑋 → 𝑌\n1. 02 86. 05\nNo Single 70K No\n– A predictive model learns a\nYes Married 120K No 1. 15 91. 43\nfunction\nNo Divorced 95K Yes\n1. 29 93. 74 ෠\n𝑌 = 𝑓(𝑋)\nNo Single 85K Yes\n1. 46 96. 73\nYes Singl"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_4_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 5,
+        "section": null,
+        "excerpt": "0. 87 87. 59 • 𝑌 ෠ : predicted target value\n• If 𝑌 is numeric, the task is regression\nClassification Carbon Purity • If 𝑌 is categoric, the task is\nlevel(%) (%) classification\n1. 32 ? The University of Sydney Page 5\nRegression"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section39_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "表格 2",
+        "excerpt": "要素 | 说明 | 举例\n输入（特征） | 描述每个样本的属性，通常记为 X | 用户的年龄、收入、历史购买次数\n输出（标签） | 我们想要预测的目标，通常记为 y | 用户是否会流失（是/否）\n训练数据 | 包含已知 (X, y) 对的样本集合 | 过去 10000 个用户的特征和流失情况\n模型 | 从 X 到 y 的映射函数 y=f(X) | 逻辑回归模型、决策树"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section23_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "3.1 模型形式",
+        "excerpt": "简单线性回归是一种监督学习（回归）方法，它假设一个自变量 x 和一个因变量 y 之间存在线性关系，目标是找到一条最佳拟合直线，使得预测值 y与真实值的误差最小： α：截距 Intercept（Y轴交点） β：斜率 Slope（X每增加1单位，Y的变化量） ε长误差项 error（真实值与预测值之差） Y:因变量 X自变量"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section38_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "表格 1",
+        "excerpt": "对比维度 | 监督学习 | 无监督学习\n数据 | 有标签 (X, y) | 无标签，只有 X\n目标 | 预测 | 发现内在结构\n典型任务 | 分类、回归 | 聚类、关联规则、降维\n评估 | 准确率、F1、MSE 等（有标准答案） | 轮廓系数、SSE、业务可解释性（无标准答案）"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section41_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "表格 4",
+        "excerpt": "算法 | 类型 | 核心思想\n线性回归 | 回归 | 拟合一条直线（或超平面）使误差最小\n逻辑回归 | 分类 | 用Sigmoid函数将线性输出映射为概率\n决策树 | 分类/回归 | 通过一系列 if-else 规则做决策\n随机森林 | 分类/回归 | 多棵决策树的投票/平均\n支持向量机(SVM) | 分类/回归 | 寻找最大间隔的超平面\nK近邻(KNN) | 分类/回归 | 看最近的K个邻居的标签"
+      }
+    ],
+    "gap": "补习资料覆盖监督学习定义、y=f(X)映射、回归/分类区分及线性回归、逻辑回归、决策树等算法，但未明确列出朴素贝叶斯。",
+    "recommendation": "补充朴素贝叶斯作为监督学习算法的说明。",
+    "confidence": 0.85
+  },
+  {
+    "topic_id": "T002",
+    "topic": "预测模型的三个关键组成部分",
+    "description": "大多数监督预测模型包含三个关键组件：模型形式（f(X) 的形式，如简单线性回归、多元线性回归、逻辑回归）、学习方法（如何找参数，如最小二乘、交叉熵、梯度下降）、评估指标（预测有多好，如 MSE、RMSE、R²、分类指标）。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_6_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 7,
+        "section": null,
+        "excerpt": "How Predictive Models are built\n– Most supervised predictive models involve three key\ncomponents:\nComponent Key question In this lecture\nModel Form What does 𝑓(𝑋) Simple linear regression, multiple\nlook like? linear regression, logistic regression\nLearning method How do we find the cost functions (Least squares, cross-\nparameters? entropy), gradient descent\nEvaluation metric How good are the MSE, "
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_6_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 7,
+        "section": null,
+        "excerpt": "entropy), gradient descent\nEvaluation metric How good are the MSE, RMSE, 𝑅2 ,classification\npredictions? metrics\nThe University of Sydney Page 7"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section36_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "6. Tips",
+        "excerpt": "与简单 baseline 比较 简单模型 + 更多数据往往更好 始终在 held-out 数据上测试 任何预测模型 = 模型形式 Model Form + 成本函数 Cost Function + 优化算法"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section40_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "表格 3",
+        "excerpt": "| 分类 | 回归\n预测目标 | 离散的类别标签categoric | 连续的数值numeric\n输出示例 | “是垃圾邮件”或“不是垃圾邮件” | 房价 453,200 元\n典型算法 | 逻辑回归、决策树、SVM、KNN | 线性回归、决策树回归、SVR\n评估指标 | 准确率、精确率、召回率、F1 | MSE、RMSE、R²"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section35_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "5.5 损失函数",
+        "excerpt": "逻辑回归的代价函数使用 对数损失 (Log Loss) 或 交叉熵 (Cross-Entropy)： MSE 的问题：如果逻辑回归使用 MSE，损失函数会是非凸函数（Non-convex），有很多局部最小值，难以找到全局最优解。 Cross-Entropy 的优势：它是凸函数，能保证找到全局最优解。 优化方法：梯度下降"
+      }
+    ],
+    "gap": "补习资料给出“模型形式+成本函数+优化算法”三要素及评估指标，但未系统以“模型形式/学习方法/评估指标”三组件框架呈现。",
+    "recommendation": "补充三组件框架的明确表述。",
+    "confidence": 0.8
+  },
+  {
+    "topic_id": "T003",
+    "topic": "各回归模型的形式",
+    "description": "简单线性回归 ŷ=α+βx 输出数值；多元线性回归 ŷ=θ0+θ1x1+…+θdxd 输出数值；梯度下降是学习参数的优化方法；逻辑回归 p̂=P(Y=1|X) 输出概率/类别标签。",
+    "coverage": "partial",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_5_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 6,
+        "section": null,
+        "excerpt": "From predictive modelling to regression\n– In this lecture, we will study different forms of the predictive\nfunction 𝑓(𝑋)\nTopic Model Form Output\nSimple linear regression 𝑦ො = 𝛼 + 𝛽𝑥 Numeric value\nMultiple linear regression 𝑦ො = 𝜃 + 𝜃 𝑥 + 𝜃 𝑥 +. . +𝜃 𝑥 Numeric value\n0 1 1 1 1 𝑑 𝑑\nGradient descent Optimisation method for learning Updated model\nparameters parameters\nLogistic regression 𝑝Ƹ = 𝑃(𝑌 = 1|𝑋"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_5_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 6,
+        "section": null,
+        "excerpt": ". +𝜃 𝑥 Numeric value\n0 1 1 1 1 𝑑 𝑑\nGradient descent Optimisation method for learning Updated model\nparameters parameters\nLogistic regression 𝑝Ƹ = 𝑃(𝑌 = 1|𝑋) Probability/Class\nlabel\nThe University of Sydney Page 6"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section41_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "表格 4",
+        "excerpt": "算法 | 类型 | 核心思想\n线性回归 | 回归 | 拟合一条直线（或超平面）使误差最小\n逻辑回归 | 分类 | 用Sigmoid函数将线性输出映射为概率\n决策树 | 分类/回归 | 通过一系列 if-else 规则做决策\n随机森林 | 分类/回归 | 多棵决策树的投票/平均\n支持向量机(SVM) | 分类/回归 | 寻找最大间隔的超平面\nK近邻(KNN) | 分类/回归 | 看最近的K个邻居的标签"
+      }
+    ],
+    "gap": "补习资料有简单线性回归、多元线性回归、逻辑回归形式，但未明确将梯度下降列为学习参数的优化方法并给出更新形式。",
+    "recommendation": "补充梯度下降作为参数学习优化方法的说明。",
+    "confidence": 0.75
+  },
+  {
+    "topic_id": "T004",
+    "topic": "简单线性回归",
+    "description": "简单线性回归是寻找因变量 Y 与自变量 X 之间最佳拟合直线的方法，只有一个自变量。模型为 ŷi=α̂+β̂xi，α 为截距（直线与 y 轴交点），β 为斜率（方向和陡峭程度）。完整模型为 yi=α+βxi+εi，εi 为误差项。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_8_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 9,
+        "section": null,
+        "excerpt": "Simple linear regression\n– Method for finding the line\nof best fit between the\ndependent variable Y and\nthe independent variable X\n– Simple: only one\nindependent variable\nThe University of Sydney Page 9"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_9_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 10,
+        "section": null,
+        "excerpt": "What’s the line that best predicts 𝑌 from 𝑋? Slope\nIntercept\nመ\n𝑦ෝ = 𝛼ො + 𝛽𝑥\n𝑖 𝑖\nThe University of Sydney Page 10"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_10_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 11,
+        "section": null,
+        "excerpt": "Fitting SLR: learn α and β\n– α: Intercept (where the line crosses the y\naxis)\n– β: Slope (direction and steepness of the line)\n𝑦 = 𝛼 + 𝛽𝑥 + 𝜀\n– ε : Error (error term describing variation of\n𝑖 𝑖 i\ndata)\n– Y is the dependent variable (response). i\n– X is the independent variable (predictor). i\nThe University of Sydney Page 11"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_10_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 11,
+        "section": null,
+        "excerpt": "i\n– X is the independent variable (predictor). i\nThe University of Sydney Page 11"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section23_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "3.1 模型形式",
+        "excerpt": "简单线性回归是一种监督学习（回归）方法，它假设一个自变量 x 和一个因变量 y 之间存在线性关系，目标是找到一条最佳拟合直线，使得预测值 y与真实值的误差最小： α：截距 Intercept（Y轴交点） β：斜率 Slope（X每增加1单位，Y的变化量） ε长误差项 error（真实值与预测值之差） Y:因变量 X自变量"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section26_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "3.4 简单线性回归的假设与局限性",
+        "excerpt": "假设条件 线性关系：x 和 y 确实是线性关系。 误差项独立同分布，且服从均值为 0 的正态分布。 同方差性：误差的方差是常数，不随 x 变化。 何时不适用？ 数据明显是非线性趋势（可用多项式回归或其它模型） 存在异常值会严重影响拟合线 只有一个自变量，信息量有限（需要多元回归）"
+      }
+    ],
+    "gap": "补习资料覆盖简单线性回归模型形式、截距、斜率、误差项及假设。",
+    "recommendation": "无需补充。",
+    "confidence": 0.9
+  },
+  {
+    "topic_id": "T005",
+    "topic": "误差、残差与平方误差和",
+    "description": "误差/残差是观测值与预测值之差 (y_actual−y_predicted)。平方误差和 SSE=Σ(yi−ŷi)²。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_11_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 12,
+        "section": null,
+        "excerpt": "Fitting SLR: Minimize sum of squared errors\n– Error/residual: difference\nbetween the observed value\nand predicted value\n(𝑦 − 𝑦 )\n𝑎𝑐𝑡𝑢𝑎𝑙 𝑝𝑟𝑒𝑑𝑖𝑐𝑡𝑒𝑑\n– Sum of squared errors:\n = SSE =  ( y − yˆ ) 2\ni i\nSum Error Square\nhttp://home. ku. edu. tr/yihlamur/public_html/Bitirme%20Projesi%20-\n%20Ger%C3%A7ek%20Data%20D%C3%BCzenlenmi%C5%9F/regression/\nminitab%20regresion%20hakk%C4%B1nda%20g%C3%BCzel%20bilgil"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_11_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 12,
+        "section": null,
+        "excerpt": "tr/yihlamur/public_html/Bitirme%20Projesi%20-\n%20Ger%C3%A7ek%20Data%20D%C3%BCzenlenmi%C5%9F/regression/\nminitab%20regresion%20hakk%C4%B1nda%20g%C3%BCzel%20bilgiler. ht\nm\nThe University of Sydney Page 12"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section24_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "3.2 最小二乘法 least square models",
+        "excerpt": "这是最常用的参数估计方法。 它的逻辑是：找到一条直线，使得所有真实数据点到这条直线的垂直距离（残差）的平方和最小。 我们希望这条直线能最好地拟合所有数据点。 最常用的准则是最小化残差平方和（RSS）："
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section2_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.1.2均方误差MSE",
+        "excerpt": "适用于回归问题（预测连续值，如房价、温度） 均方误差计算的是所有样本的预测值与真实值之差的平方的平均值。 特点：由于使用了平方，它对较大的误差惩罚更重（误差为 2 时，平方后贡献为 4；误差为 10 时，平方后贡献高达 100）。"
+      }
+    ],
+    "gap": "补习资料覆盖残差平方和最小化与MSE，但SSE符号未明确出现。",
+    "recommendation": "可补充SSE符号定义。",
+    "confidence": 0.8
+  },
+  {
+    "topic_id": "T006",
+    "topic": "最小二乘模型与普通最小二乘(OLS)",
+    "description": "最小二乘模型选择使平方残差尽可能小的参数，即 min Σ(yi−ŷi)²。普通最小二乘(OLS)是线性回归的标准最小二乘方法：模型对参数是线性的，所有观测点被平等对待。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_12_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 13,
+        "section": null,
+        "excerpt": "Least Squares Models\n– Many prediction models make predictions of the form:\n– 𝑦ො = 𝑓 𝑥\n𝑖 𝑖\n– Simple linear regression is a special case of the general form\n– A least squares model chooses model parameters to make the\nsquared residuals (errors) as small as possible\n– minσ𝑛 ( 𝑦 − 𝑦ො )2\n𝑖=1 𝑖 𝑖\n– Ordinary Least Squares (OLS) is the standard least squares\nmethod for linear regression:\n– The model is l"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_12_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 13,
+        "section": null,
+        "excerpt": "Least Squares Models\n– Many prediction models make predictions of the form:\n– 𝑦ො = 𝑓 𝑥\n𝑖 𝑖\n– Simple linear regression is a special case of the general form\n– A least squares model chooses model parameters to make the\nsquared residuals (errors) as small as possible\n– minσ𝑛 ( 𝑦 − 𝑦ො )2\n𝑖=1 𝑖 𝑖\n– Ordinary Least Squares (OLS) is the standard least squares\nmethod for linear regression:\n– The model is l"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section24_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "3.2 最小二乘法 least square models",
+        "excerpt": "这是最常用的参数估计方法。 它的逻辑是：找到一条直线，使得所有真实数据点到这条直线的垂直距离（残差）的平方和最小。 我们希望这条直线能最好地拟合所有数据点。 最常用的准则是最小化残差平方和（RSS）："
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section34_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "5.4模型训练",
+        "excerpt": "在线性回归中我们使用“最小二乘法”(Least Squares)，但在逻辑回归中，由于Sigmoid函数的存在，最小二乘法的损失函数会变成非凸函数（有很多局部最优解），无法通过简单的求导找到全局最优。"
+      }
+    ],
+    "gap": "补习资料覆盖最小二乘最小化残差平方和，但OLS术语及“模型对参数线性、观测平等对待”未明确。",
+    "recommendation": "补充OLS术语与性质。",
+    "confidence": 0.75
+  },
+  {
+    "topic_id": "T007",
+    "topic": "OLS 参数求解公式",
+    "description": "目标是找到使 (1/n)Σ(α̂+β̂xi−yi)² 最小的 α̂ 和 β̂（均方误差）。用微积分可得 β̂=Σ(xi−x̄)(yi−ȳ)/Σ(xi−x̄)²=cov(x,y)/Var(x)=r(x,y)*sd(y)/sd(x)，α̂=ȳ−β̂x̄，其中 x̄、ȳ 为均值，sd 为标准差，r 为相关系数。",
+    "coverage": "partial",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_13_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 14,
+        "section": null,
+        "excerpt": "Ordinary Least Squares (OLS)\nመ\n– Our goal is to find the optimal value of 𝛼ො and 𝛽 such that\n2\n1\nσ 𝑛 𝛼ො + 𝛽 መ 𝑥 − 𝑦 is the minimum\n𝑖=1 𝑖 𝑖\n𝑛\n– Mean Square Error\n– Using calculus\nσ （𝑥 − 𝑥ҧ）（𝑦 − 𝑦ത） cov(𝑥, 𝑦) 𝑟(𝑥, 𝑦) ∗ 𝑠𝑑(𝑦)\nመ 𝑖 𝑖\n𝛽 = = =\nσ(𝑥 − 𝑥ҧ)2 Var(𝑥) 𝑠𝑑(𝑥)\n𝑖\nመ\n𝛼ො = 𝑦ത − 𝛽𝑥ҧ\n1\n𝑥ҧ =\nσ𝑛\n𝑥 is the average of 𝑥 values\n𝑖=1 𝑖 𝑖\n𝑛\n1\nsd is the standard deviation 𝑦ത =\nσ𝑛\n𝑦 is the average of 𝑦 values\n𝑖=1 "
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_13_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 14,
+        "section": null,
+        "excerpt": "Ordinary Least Squares (OLS)\nመ\n– Our goal is to find the optimal value of 𝛼ො and 𝛽 such that\n2\n1\nσ 𝑛 𝛼ො + 𝛽 መ 𝑥 − 𝑦 is the minimum\n𝑖=1 𝑖 𝑖\n𝑛\n– Mean Square Error\n– Using calculus\nσ （𝑥 − 𝑥ҧ）（𝑦 − 𝑦ത） cov(𝑥, 𝑦) 𝑟(𝑥, 𝑦) ∗ 𝑠𝑑(𝑦)\nመ 𝑖 𝑖\n𝛽 = = =\nσ(𝑥 − 𝑥ҧ)2 Var(𝑥) 𝑠𝑑(𝑥)\n𝑖\nመ\n𝛼ො = 𝑦ത − 𝛽𝑥ҧ\n1\n𝑥ҧ =\nσ𝑛\n𝑥 is the average of 𝑥 values\n𝑖=1 𝑖 𝑖\n𝑛\n1\nsd is the standard deviation 𝑦ത =\nσ𝑛\n𝑦 is the average of 𝑦 values\n𝑖=1 "
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section24_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "3.2 最小二乘法 least square models",
+        "excerpt": "这是最常用的参数估计方法。 它的逻辑是：找到一条直线，使得所有真实数据点到这条直线的垂直距离（残差）的平方和最小。 我们希望这条直线能最好地拟合所有数据点。 最常用的准则是最小化残差平方和（RSS）："
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section42_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "表格 5",
+        "excerpt": "指标 | 公式 | 含义 | 范围\nMSE (均方误差) |  | 误差平方的平均，越小越好 | [0, +∞)\nRMSE |  | 和 y 同单位，更直观 | [0, +∞)\nR² (决定系数) |  | 模型解释的方差比例 | (-∞, 1]，通常 ≥ 0，越近 1 越好"
+      }
+    ],
+    "gap": "补习资料有最小二乘概念和MSE/RMSE/R²公式，但未给出β̂=cov(x,y)/Var(x)=r·sd(y)/sd(x)及α̂=ȳ−β̂x̄的闭式求解公式。",
+    "recommendation": "补充OLS参数闭式解公式。",
+    "confidence": 0.8
+  },
+  {
+    "topic_id": "T008",
+    "topic": "训练数据与测试数据",
+    "description": "拟合模型与评估模型是不同的任务。预测建模通常将数据划分为训练集和测试集：训练数据用于学习模型参数，测试数据留出用于检查模型在未见数据上的表现。模型可能在训练数据上拟合很好但在新数据上表现很差。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_14_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 15,
+        "section": null,
+        "excerpt": "Training and Testing Data\n– Fitting a model and evaluating a model are different tasks\n– For predictive modelling, it is typical to split the data into\ntraining/test set\n– A model may fit the training data well but perform poorly on\nnew data\nDataset Purpose\nTraining data Used to learn the model parameters\nTest data Kept aside to check how well the model\nperforms on unseen data\nThe University of Sy"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_14_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 15,
+        "section": null,
+        "excerpt": "Training and Testing Data\n– Fitting a model and evaluating a model are different tasks\n– For predictive modelling, it is typical to split the data into\ntraining/test set\n– A model may fit the training data well but perform poorly on\nnew data\nDataset Purpose\nTraining data Used to learn the model parameters\nTest data Kept aside to check how well the model\nperforms on unseen data\nThe University of Sy"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section12_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.3.3 恰到好处的拟合",
+        "excerpt": "这是理想状态。 模型足够复杂以学习数据中的关键模式，但又不会复杂到去学习随机噪声。 它能在训练集和未知的测试集上都表现良好。 表现：在训练集和测试集上的误差都较低，且两者接近。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section10_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.3.1 过拟合 overfit",
+        "excerpt": "过拟合 是指模型过于复杂，不仅学习了数据中的真实规律，还\"记住\"了训练数据中的随机噪声和异常值。 表现：模型在训练数据上表现极好（误差极小），但在新的、未见过的数据上表现急剧下降，泛化能力差。 原因：模型复杂度过高，训练数据量太少。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section36_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "6. Tips",
+        "excerpt": "与简单 baseline 比较 简单模型 + 更多数据往往更好 始终在 held-out 数据上测试 任何预测模型 = 模型形式 Model Form + 成本函数 Cost Function + 优化算法"
+      }
+    ],
+    "gap": "补习资料覆盖训练/测试集、过拟合泛化差、held-out测试，但未明确“训练数据学习参数、测试数据留出”的表格定义。",
+    "recommendation": "补充训练/测试数据用途定义。",
+    "confidence": 0.8
+  },
+  {
+    "topic_id": "T009",
+    "topic": "MSE 与 RMSE 评估指标",
+    "description": "MSE 可用于衡量拟合程度，OLS 直接最小化训练数据上的 MSE；但 MSE 以平方单位度量，难以在原问题背景下解释。RMSE 是 MSE 的平方根，与响应变量 y 同单位，更易解释。MSE 和 RMSE 都是尺度相关的，其值依赖 y 的尺度和范围。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_15_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 16,
+        "section": null,
+        "excerpt": "Evaluation Metrics\n– Can we use Mean Squared Error (MSE) to measure how well the model fits the data? – Yes. OLS directly minimises MSE on the training data. – What is the limitation of MSE? – MSE is measured in squared units. – This makes it difficult to interpret in the original context of the problem. – A more interpretable metric: RMSE\n– RMSE stands for Root Mean Squared Error. – RMSE is the s"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_15_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 16,
+        "section": null,
+        "excerpt": "– RMSE is measured in the same unit as the response variable 𝑦. – However, both MSE and RMSE are scale-dependent\n– Their values depend on the scale and range of 𝑦. – For example, predicting exam marks out of 100 and predicting annual income in dollars\nmay produce very different MSE/RMSE values, even if the models have similar relative\nperformance. The University of Sydney Page 16"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_15_2",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 16,
+        "section": null,
+        "excerpt": "– For example, predicting exam marks out of 100 and predicting annual income in dollars\nmay produce very different MSE/RMSE values, even if the models have similar relative\nperformance. The University of Sydney Page 16"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section42_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "表格 5",
+        "excerpt": "指标 | 公式 | 含义 | 范围\nMSE (均方误差) |  | 误差平方的平均，越小越好 | [0, +∞)\nRMSE |  | 和 y 同单位，更直观 | [0, +∞)\nR² (决定系数) |  | 模型解释的方差比例 | (-∞, 1]，通常 ≥ 0，越近 1 越好"
+      }
+    ],
+    "gap": "补习资料覆盖MSE/RMSE定义与同单位解释，但尺度相关性未明确。",
+    "recommendation": "补充尺度相关性说明。",
+    "confidence": 0.8
+  },
+  {
+    "topic_id": "T010",
+    "topic": "MSE/RMSE 计算示例",
+    "description": "以学习时长预测考试分数为例（Mark=50+5*study hours），计算各学生误差与平方误差，MSE=(4+9+16+9)/4=9.5，RMSE=√9.5≈3.08，可解释为预测通常偏差约 3 分。MSE 和 RMSE 衡量预测误差大小但尺度相关，对 0~100 的分数可能可接受，但对 1~5 的满意度评分则很差。",
+    "coverage": "partial",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_16_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 17,
+        "section": null,
+        "excerpt": "Example: Predicting exam mark from study hours\nMark = 50 + 5 * study hours\ny = 50 + 5x\n(4 + 9 + 16 + 9)\nStudy Actual Predicted Squared 𝑀𝑆𝐸 = = 9. 5\nStudent Error (𝒚−𝒚ෝ)\nhours (x) mark (y) mark(𝒚ෝ) error 4\n𝑅𝑀𝑆𝐸 = 9. 5 ≈ 3. 08\nA 2 58 60 -2 4\nB 4 73 70 3 9\nBased on RMSE, we can\nsay that the prediction is\nC 6 76 80 -4 16\ntypically off by 3 points\nD 8 93 90 3 9\nMSE and RMSE measure the size of predicti"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_16_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 17,
+        "section": null,
+        "excerpt": "5 ≈ 3. 08\nA 2 58 60 -2 4\nB 4 73 70 3 9\nBased on RMSE, we can\nsay that the prediction is\nC 6 76 80 -4 16\ntypically off by 3 points\nD 8 93 90 3 9\nMSE and RMSE measure the size of prediction errors, they are useful but scale dependent\nThis might be good enough for score between 0~100, but it is very bad if the prediction is for\nsatisfaction rating between 1~5. The University of Sydney Page 17"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_16_2",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 17,
+        "section": null,
+        "excerpt": "08\nA 2 58 60 -2 4\nB 4 73 70 3 9\nBased on RMSE, we can\nsay that the prediction is\nC 6 76 80 -4 16\ntypically off by 3 points\nD 8 93 90 3 9\nMSE and RMSE measure the size of prediction errors, they are useful but scale dependent\nThis might be good enough for score between 0~100, but it is very bad if the prediction is for\nsatisfaction rating between 1~5. The University of Sydney Page 17"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section42_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "表格 5",
+        "excerpt": "指标 | 公式 | 含义 | 范围\nMSE (均方误差) |  | 误差平方的平均，越小越好 | [0, +∞)\nRMSE |  | 和 y 同单位，更直观 | [0, +∞)\nR² (决定系数) |  | 模型解释的方差比例 | (-∞, 1]，通常 ≥ 0，越近 1 越好"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section2_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.1.2均方误差MSE",
+        "excerpt": "适用于回归问题（预测连续值，如房价、温度） 均方误差计算的是所有样本的预测值与真实值之差的平方的平均值。 特点：由于使用了平方，它对较大的误差惩罚更重（误差为 2 时，平方后贡献为 4；误差为 10 时，平方后贡献高达 100）。"
+      }
+    ],
+    "gap": "补习资料有MSE/RMSE公式与含义，但无学习时长预测考试分数的具体数值计算示例（MSE=9.5、RMSE≈3.08）。",
+    "recommendation": "补充该计算示例。",
+    "confidence": 0.8
+  },
+  {
+    "topic_id": "T011",
+    "topic": "决定系数 R²",
+    "description": "R² 是 y 中被解释的变异与总变异之比：R²=Σ(ŷi−ȳ)²/Σ(yi−ȳ)²=1−SSE/SST，SST 为平方总和。取值范围 0 到 1，衡量拟合优度，越高表示线性模型拟合越好。R²=0 表示模型不解释 y 的任何变异；R²=1 表示解释全部变异；R²=0.75 表示解释 75% 的变异。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_17_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 18,
+        "section": null,
+        "excerpt": "Coefficient of determination (R2)\n– R2: ratio of explained variation in y to total variation in y\nσ(𝑦ො − 𝑦ത) 2 σ 𝑦 − 𝑦ො 2 𝑆𝑆𝐸\n𝑖 𝑖 𝑖\n2\n𝑅 = = 1 − = 1 −\nσ 𝑦 − 𝑦ത 2 σ 𝑦 − 𝑦ത 2 𝑆𝑆𝑇 Sum of\n𝑖 𝑖\nsquared\n– Ranges from 0 to 1, measures goodness of fit, with higher\ntotal\nvalues indicating better fit for the linear model\n– 𝑅2 = 0 : the model explains none of the variation in 𝑦\n– 𝑅2 = 1 : the model explains al"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_17_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 18,
+        "section": null,
+        "excerpt": "Coefficient of determination (R2)\n– R2: ratio of explained variation in y to total variation in y\nσ(𝑦ො − 𝑦ത) 2 σ 𝑦 − 𝑦ො 2 𝑆𝑆𝐸\n𝑖 𝑖 𝑖\n2\n𝑅 = = 1 − = 1 −\nσ 𝑦 − 𝑦ത 2 σ 𝑦 − 𝑦ത 2 𝑆𝑆𝑇 Sum of\n𝑖 𝑖\nsquared\n– Ranges from 0 to 1, measures goodness of fit, with higher\ntotal\nvalues indicating better fit for the linear model\n– 𝑅2 = 0 : the model explains none of the variation in 𝑦\n– 𝑅2 = 1 : the model explains al"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section25_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "3.3 R²  决定系数 Coefficient of determination",
+        "excerpt": "拟合出直线后，我们需要量化它有多“好”。 R2 取值范围 [0,1]，越接近 1 表示模型拟合越好。 解释：因变量总变异中能被模型解释的比例。 注意：R2 高不代表模型预测准确（可能过拟合），需结合其他指标。 R2 = 0:模型几乎不解释y中的方差 R2 = 1:模型几乎完全解释y中的方差 R2 = 0. 75:模型解释了y中75%的方差"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section42_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "表格 5",
+        "excerpt": "指标 | 公式 | 含义 | 范围\nMSE (均方误差) |  | 误差平方的平均，越小越好 | [0, +∞)\nRMSE |  | 和 y 同单位，更直观 | [0, +∞)\nR² (决定系数) |  | 模型解释的方差比例 | (-∞, 1]，通常 ≥ 0，越近 1 越好"
+      }
+    ],
+    "gap": "补习资料覆盖R²定义、范围与解释，但1−SSE/SST公式未明确。",
+    "recommendation": "补充R²公式。",
+    "confidence": 0.8
+  },
+  {
+    "topic_id": "T012",
+    "topic": "R² 计算示例",
+    "description": "以考试分数为例，SSE=4+9+16+9=38，ȳ=(58+73+76+93)/4=75，SST=(58−75)²+(73−75)²+(76−75)²+(93−75)²=618，R²=1−38/618=0.94。",
+    "coverage": "partial",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_18_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 19,
+        "section": null,
+        "excerpt": "Example: Predicting exam mark from study hours\n𝑆𝑆𝐸 = 4 + 9 + 16 + 9 = 38\nStudy Actual Predicted Squared\nStudent Error (𝒚−𝒚ෝ)\nhours (x) mark (y) mark(𝒚ෝ) error\n58 + 73 + 76 + 93\nA 2 58 60 -2 4 𝑦ത = = 75\n4\nB 4 73 70 3 9\n𝑆𝑆𝑇 = (58 − 75)2+(73 − 75)2\nC 6 76 80 -4 16\n+(76 − 75)2+(93 − 75)2= 618\nD 8 93 90 3 9\n38\n𝑅2 = 1 − = 0. 94\n618\nThe University of Sydney Page 19"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_18_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 19,
+        "section": null,
+        "excerpt": "Example: Predicting exam mark from study hours\n𝑆𝑆𝐸 = 4 + 9 + 16 + 9 = 38\nStudy Actual Predicted Squared\nStudent Error (𝒚−𝒚ෝ)\nhours (x) mark (y) mark(𝒚ෝ) error\n58 + 73 + 76 + 93\nA 2 58 60 -2 4 𝑦ത = = 75\n4\nB 4 73 70 3 9\n𝑆𝑆𝑇 = (58 − 75)2+(73 − 75)2\nC 6 76 80 -4 16\n+(76 − 75)2+(93 − 75)2= 618\nD 8 93 90 3 9\n38\n𝑅2 = 1 − = 0. 94\n618\nThe University of Sydney Page 19"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section25_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "3.3 R²  决定系数 Coefficient of determination",
+        "excerpt": "拟合出直线后，我们需要量化它有多“好”。 R2 取值范围 [0,1]，越接近 1 表示模型拟合越好。 解释：因变量总变异中能被模型解释的比例。 注意：R2 高不代表模型预测准确（可能过拟合），需结合其他指标。 R2 = 0:模型几乎不解释y中的方差 R2 = 1:模型几乎完全解释y中的方差 R2 = 0. 75:模型解释了y中75%的方差"
+      }
+    ],
+    "gap": "补习资料有R²概念与0.75示例，但无考试分数SSE=38、SST=618、R²=0.94的具体计算示例。",
+    "recommendation": "补充该计算示例。",
+    "confidence": 0.8
+  },
+  {
+    "topic_id": "T013",
+    "topic": "指标解释练习",
+    "description": "RMSE=4 的合理解释是模型预测通常偏离实际约 4 分；两个模型 RMSE 均为 3 时，RMSE=3 对百分制考试可能可接受但对 1–5 评分很差（尺度相关）；R²=0.72 的最佳解释是模型解释了响应变量约 72% 的变异。",
+    "coverage": "partial",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_19_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 20,
+        "section": null,
+        "excerpt": "Test your understanding\n– A model predicting exam marks out of 100 has: 𝑅𝑀𝑆𝐸 = 4\nWhich interpretation is most appropriate? A. The model explains 4% of the variation in exam marks. B. The model’s predictions are typically about 4 marks away\nfrom the actual marks. C. The model has exactly 4 incorrect predictions. D. The model’s average squared error is 4 marks. The University of Sydney Page 20"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_20_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 21,
+        "section": null,
+        "excerpt": "Test your understanding\n– Two regression models have the same RMSE value of 3. Model A\npredicts exam marks out of 100. Model B predicts a satisfaction\nrating from 1 to 5. Which statement is most appropriate? A. The two models have equally good predictive performance. B. Model A is definitely worse because exam marks have a larger\nrange. C. RMSE = 3 may be acceptable for exam marks but very poor fo"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_21_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 22,
+        "section": null,
+        "excerpt": "Test your understanding\n– A regression model has 𝑅 2 = 0. 72, which statement is the best\ninterpretation? A. The model predicts 72% of the data points exactly. B. The model has an average prediction error of 0. 72. C. The model explains about 72% of the variation in the\nresponse variable. D. The model’s slope is 0. 72. The University of Sydney Page 22"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section25_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "3.3 R²  决定系数 Coefficient of determination",
+        "excerpt": "拟合出直线后，我们需要量化它有多“好”。 R2 取值范围 [0,1]，越接近 1 表示模型拟合越好。 解释：因变量总变异中能被模型解释的比例。 注意：R2 高不代表模型预测准确（可能过拟合），需结合其他指标。 R2 = 0:模型几乎不解释y中的方差 R2 = 1:模型几乎完全解释y中的方差 R2 = 0. 75:模型解释了y中75%的方差"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section42_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "表格 5",
+        "excerpt": "指标 | 公式 | 含义 | 范围\nMSE (均方误差) |  | 误差平方的平均，越小越好 | [0, +∞)\nRMSE |  | 和 y 同单位，更直观 | [0, +∞)\nR² (决定系数) |  | 模型解释的方差比例 | (-∞, 1]，通常 ≥ 0，越近 1 越好"
+      }
+    ],
+    "gap": "补习资料有R²解释与RMSE同单位，但无RMSE=4解释、RMSE=3尺度对比、R²=0.72解释等练习。",
+    "recommendation": "补充指标解释练习题。",
+    "confidence": 0.75
+  },
+  {
+    "topic_id": "T014",
+    "topic": "多元线性回归",
+    "description": "多元线性回归解释两个或多个自变量与一个因变量之间的关系，模型为 Y=α+β1X1+β2X2+…+βdXd。使用线性预测模型，选择 θ 以最小化平方预测误差；对 OLS 线性回归有闭式解。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_23_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 24,
+        "section": null,
+        "excerpt": "Multiple linear regression\n– Explain the relationship\nbetween:\n– two or more independent\nY = α + β X + β X + … + β X variables and\n1 1 2 2 d d\n– one dependent variable\nThe University of Sydney Page 24"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_24_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 25,
+        "section": null,
+        "excerpt": "Learning the Regression Parameters\n– We use a linear prediction model:\n– We choose θ to minimise the squared prediction errors\nNote normal MSE\nwould have a\ndenominator of n\n– For Ordinary Least Squares linear regression, this has a closed-form\nsolution. The University of Sydney Page 25"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_24_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 25,
+        "section": null,
+        "excerpt": "Learning the Regression Parameters\n– We use a linear prediction model:\n– We choose θ to minimise the squared prediction errors\nNote normal MSE\nwould have a\ndenominator of n\n– For Ordinary Least Squares linear regression, this has a closed-form\nsolution. The University of Sydney Page 25"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section28_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "4.1 模型形式",
+        "excerpt": "当有多个自变量 X1, X2, ,,, Xd以及一个因变量 时： （其中 X0 = 1 用于截距） 多元线性回归 研究一个因变量 yy 与 多个自变量 x1,x2,…,xp​ 之间的线性关系，目标是找到最优的超平面："
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section26_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "3.4 简单线性回归的假设与局限性",
+        "excerpt": "假设条件 线性关系：x 和 y 确实是线性关系。 误差项独立同分布，且服从均值为 0 的正态分布。 同方差性：误差的方差是常数，不随 x 变化。 何时不适用？ 数据明显是非线性趋势（可用多项式回归或其它模型） 存在异常值会严重影响拟合线 只有一个自变量，信息量有限（需要多元回归）"
+      }
+    ],
+    "gap": "补习资料覆盖多元线性回归模型形式与超平面，但闭式解未明确。",
+    "recommendation": "补充OLS闭式解说明。",
+    "confidence": 0.8
+  },
+  {
+    "topic_id": "T015",
+    "topic": "scikit-learn 机器学习接口",
+    "description": "scikit-learn 中 Fit(X,y) 将模型拟合到训练数据 X、y（X 为特征向量，y 为值）；Predict(T) 对新数据 T 预测值。",
+    "coverage": "missing",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_25_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 26,
+        "section": null,
+        "excerpt": "Machine learning in scikit-learn\n– Fit(X, y): fits a model to the training data X, y\n– X: feature vectors\n– y: value\n– Predict(T): predict value for new data T\nThe University of Sydney Page 26"
+      }
+    ],
+    "tutoring_sources": [],
+    "gap": "补习资料无scikit-learn的Fit(X,y)/Predict(T)接口说明。",
+    "recommendation": "补充scikit-learn接口内容。",
+    "confidence": 0.9
+  },
+  {
+    "topic_id": "T016",
+    "topic": "多项式特征与模型灵活性",
+    "description": "线性模型可通过多项式变换特征扩展：ŷ=hθ(x)=θ0+θ1x1+θ2x2+…+θdxd。虽然曲线对 x 非线性，但模型对参数 θ0,θ1,…,θd 仍是线性的，因此可用线性回归技术拟合非线性数据集。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_27_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 28,
+        "section": null,
+        "excerpt": "Increasing model flexibility\n– A linear model an be extended by Polynomial transformed\nfeatures\n– 𝑦ො = ℎ (x) = 𝜃 + 𝜃 x1 +𝜃 x2 +. . . +𝜃 xd\n𝜽 0 1 2 𝑑\n– Although the curve is nonlinear in 𝑥, the model is still linear in\nthe parameters: 𝜃 , 𝜃 , … , 𝜃\n0 1 𝑑\n– This allows the use of linear regression\ntechniques to fit non-linear datasets. The University of Sydney Page 28"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_27_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 28,
+        "section": null,
+        "excerpt": "+𝜃 xd\n𝜽 0 1 2 𝑑\n– Although the curve is nonlinear in 𝑥, the model is still linear in\nthe parameters: 𝜃 , 𝜃 , … , 𝜃\n0 1 𝑑\n– This allows the use of linear regression\ntechniques to fit non-linear datasets. The University of Sydney Page 28"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section29_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "4.2 多项式回归",
+        "excerpt": "在简单线性回归中，我们假设 y 和 x 的关系是一条直线，但现实中很多关系是曲线的 项式回归虽然曲线是非线性的，但模型对参数 θ 依然是线性的 多项式回归通过在模型中引入自变量的幂次（x2,x3,…），用一条光滑曲线来拟合非线性趋势："
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section26_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "3.4 简单线性回归的假设与局限性",
+        "excerpt": "假设条件 线性关系：x 和 y 确实是线性关系。 误差项独立同分布，且服从均值为 0 的正态分布。 同方差性：误差的方差是常数，不随 x 变化。 何时不适用？ 数据明显是非线性趋势（可用多项式回归或其它模型） 存在异常值会严重影响拟合线 只有一个自变量，信息量有限（需要多元回归）"
+      }
+    ],
+    "gap": "补习资料覆盖多项式回归及对参数线性、可拟合非线性趋势。",
+    "recommendation": "无需补充。",
+    "confidence": 0.85
+  },
+  {
+    "topic_id": "T017",
+    "topic": "模型复杂度、欠拟合与过拟合",
+    "description": "更灵活的模型能捕捉更复杂模式，但过度灵活会拟合噪声而非潜在趋势。欠拟合：训练拟合差、测试表现差；良好拟合：训练好、测试好；过拟合：训练非常好、测试常常差（高方差），欠拟合对应高偏差。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_28_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 29,
+        "section": null,
+        "excerpt": "Model Complexity and fit\n– A more flexible model can capture more complex patterns. – But too much flexibility can fit noise rather than the underlying\ntrend. Model Training fit Test performance\nUnderfitting Poor Poor\nGood fit Good Good\nOverfitting Very good Often poor\nThe University of Sydney Page 29"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_28_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 29,
+        "section": null,
+        "excerpt": "– But too much flexibility can fit noise rather than the underlying\ntrend. Model Training fit Test performance\nUnderfitting Poor Poor\nGood fit Good Good\nOverfitting Very good Often poor\nThe University of Sydney Page 29"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_29_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 30,
+        "section": null,
+        "excerpt": "Quality of fit example\ne e e\nc c c\ni i i\nr r r\nP P P\nSize Size Size\nCorrect fit Overfitting (high variance)\nUnder-fitting (high bias)\nThe University of Sydney Page 30"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section12_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.3.3 恰到好处的拟合",
+        "excerpt": "这是理想状态。 模型足够复杂以学习数据中的关键模式，但又不会复杂到去学习随机噪声。 它能在训练集和未知的测试集上都表现良好。 表现：在训练集和测试集上的误差都较低，且两者接近。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section10_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.3.1 过拟合 overfit",
+        "excerpt": "过拟合 是指模型过于复杂，不仅学习了数据中的真实规律，还\"记住\"了训练数据中的随机噪声和异常值。 表现：模型在训练数据上表现极好（误差极小），但在新的、未见过的数据上表现急剧下降，泛化能力差。 原因：模型复杂度过高，训练数据量太少。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section11_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.3.2欠拟合 underfit",
+        "excerpt": "欠拟合 是指模型过于简单，无法捕捉数据中的基本规律或模式。 就像一个学生只学了加法，却要去解微积分题目。 表现：模型在训练数据上表现就很差（例如，准确率低，误差大）。 原因：模型复杂度太低，特征不足，或训练不充分。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section19_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.5.2方差variance",
+        "excerpt": "定义：模型预测值自身的波动范围。 反映了模型对训练数据中随机噪声的敏感程度。 高方差的表现：模型过于复杂，对训练数据中的微小变化（包括噪声）反应过度，导致过拟合。 换一组数据训练，得到的模型可能完全不同。 例子：一个深度神经网络，如果不对其进行任何约束，它可能会为每一套独特的训练数据生成一套完全不同的、极度复杂的预测规则，这就是高方差。"
+      }
+    ],
+    "gap": "补习资料覆盖过拟合、欠拟合、良好拟合及高方差/高偏差。",
+    "recommendation": "无需补充。",
+    "confidence": 0.9
+  },
+  {
+    "topic_id": "T018",
+    "topic": "减少过拟合的方法",
+    "description": "减少过拟合的方法：使用更简单的模型；使用更少或更相关的特征；尽可能收集更多训练数据；使用训练/测试划分或交叉验证检查泛化；使用正则化抑制过于复杂的模型。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_30_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 31,
+        "section": null,
+        "excerpt": "How can we reduce overfitting? – Use a simpler model\n– Use fewer or more relevant features\n– Collect more training data, if possible\n– Use train/test split or cross-validation to check generalisation. – Use regularization to discourage overly complex models. The University of Sydney Page 31"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_30_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 31,
+        "section": null,
+        "excerpt": "– Use regularization to discourage overly complex models. The University of Sydney Page 31"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section13_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.3.4应对策略",
+        "excerpt": "解决欠拟合（高偏差）： 增加模型复杂度：使用更强大的模型（如从线性模型切换到树模型、神经网络）。 添加更多特征：挖掘或构造更有意义的特征。 减少正则化：如果使用了正则化（如 L1、L2），尝试减弱其强度。 延长训练时间：对于迭代模型（如神经网络），训练更多轮次。 解决过拟合（高方差）： 获取更多训练数据：最有效的方法之一。 降低模型复杂度：选择更简单的模型（如降低多项式阶数、减少树深度、减少神经网络层数）。 特征选择：移除不相关或冗余的特征。 增加正则化： L1 正则化 (Lasso)：倾向于产生稀疏权重，可用于特征选择。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section13_0_1",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.3.4应对策略",
+        "excerpt": "增加正则化： L1 正则化 (Lasso)：倾向于产生稀疏权重，可用于特征选择。 L2 正则化 (Ridge)：使权重衰减，倾向于让所有权重都较小。 Dropout（用于神经网络）：在训练中随机\"丢弃\"一部分神经元。 早停（用于迭代模型）：当验证集误差不再下降时停止训练。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section14_0_1",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.4 正则化 regularization",
+        "excerpt": "λ很小或为 0 → 几乎不惩罚，容易过拟合 选择方法：使用交叉验证，尝试多个 λ 值，选择使验证集误差最小的那个。"
+      }
+    ],
+    "gap": "补习资料覆盖更多数据、降复杂度、特征选择、正则化、交叉验证。",
+    "recommendation": "无需补充。",
+    "confidence": 0.9
+  },
+  {
+    "topic_id": "T019",
+    "topic": "正则化概念",
+    "description": "普通训练目标：cost=预测误差；正则化训练目标：cost=预测误差+复杂度惩罚。对线性模型，复杂度常用系数大小衡量，大系数意味着模型更敏感。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_31_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 32,
+        "section": null,
+        "excerpt": "What is regularization\n– Ordinary training objective:\n– 𝑐𝑜𝑠𝑡 = 𝑝𝑟𝑒𝑑𝑖𝑐𝑡𝑖𝑜𝑛 𝑒𝑟𝑟𝑜𝑟\n– Regularized training objective:\n– 𝑐𝑜𝑠𝑡 = 𝑝𝑟𝑒𝑑𝑖𝑐𝑡𝑖𝑜𝑛 𝑒𝑟𝑟𝑜𝑟 + 𝑝𝑒𝑛𝑎𝑙𝑡𝑦 𝑓𝑜𝑟 𝑐𝑜𝑚𝑝𝑙𝑒𝑥𝑖𝑡𝑦\n– For linear models, complexity is often measured using\ncoefficient size\n– 𝑙𝑎𝑟𝑔𝑒 𝑐𝑜𝑒𝑓𝑓𝑖𝑐𝑖𝑒𝑛𝑡𝑠 ⇒ 𝑚𝑜𝑟𝑒 𝑠𝑒𝑛𝑠𝑖𝑡𝑖𝑣𝑒 𝑚𝑜𝑑𝑒𝑙\nThe University of Sydney Page 32"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_31_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 32,
+        "section": null,
+        "excerpt": "What is regularization\n– Ordinary training objective:\n– 𝑐𝑜𝑠𝑡 = 𝑝𝑟𝑒𝑑𝑖𝑐𝑡𝑖𝑜𝑛 𝑒𝑟𝑟𝑜𝑟\n– Regularized training objective:\n– 𝑐𝑜𝑠𝑡 = 𝑝𝑟𝑒𝑑𝑖𝑐𝑡𝑖𝑜𝑛 𝑒𝑟𝑟𝑜𝑟 + 𝑝𝑒𝑛𝑎𝑙𝑡𝑦 𝑓𝑜𝑟 𝑐𝑜𝑚𝑝𝑙𝑒𝑥𝑖𝑡𝑦\n– For linear models, complexity is often measured using\ncoefficient size\n– 𝑙𝑎𝑟𝑔𝑒 𝑐𝑜𝑒𝑓𝑓𝑖𝑐𝑖𝑒𝑛𝑡𝑠 ⇒ 𝑚𝑜𝑟𝑒 𝑠𝑒𝑛𝑠𝑖𝑡𝑖𝑣𝑒 𝑚𝑜𝑑𝑒𝑙\nThe University of Sydney Page 32"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section14_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.4 正则化 regularization",
+        "excerpt": "正则化 是在代价函数 J(θ)中添加一个惩罚项，限制模型参数的大小，从而抑制模型复杂度，防止过拟合。 λ：正则化参数（超参数），控制惩罚强度 Penalty(θ)：正则化项，常见的L1 正则化和L2 正则化 没有正则化：参数可以任意大，拟合出扭曲的曲线来穿过每个点。 有正则化：参数大的会被“罚款”，模型倾向于选择更小、更平滑的参数，曲线更简单。 λ很大 → 模型过于简单，可能欠拟合。 λ很小或为 0 → 几乎不惩罚，容易过拟合 选择方法：使用交叉验证，尝试多个 λ 值，选择使验证集误差最小的那个。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section20_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.5.3 偏差-方差权衡",
+        "excerpt": "这是一个机器学习中的核心权衡。 我们无法同时最小化偏差和方差。 增加模型复杂度：通常可以降低偏差（模型能力变强），但会增加方差（更容易学到噪声）。 降低模型复杂度：通常可以降低方差（模型更稳定），但会增加偏差（模型能力变弱）。 我们的目标就是找到图中的\"最佳点\"，使得总误差最小。"
+      }
+    ],
+    "gap": "补习资料覆盖正则化惩罚项、λ控制强度、大系数更敏感。",
+    "recommendation": "无需补充。",
+    "confidence": 0.85
+  },
+  {
+    "topic_id": "T020",
+    "topic": "L1/Lasso 与 L2/Ridge 正则化",
+    "description": "L1/Lasso 惩罚系数绝对值之和 λΣ|θj|，可将某些系数精确收缩为零，起到自动特征选择作用。L2/Ridge 惩罚 λΣθj²，最小化系数、将系数拉向 0。λ 控制正则化强度，λ 大则正则化强；截距 θ0 通常不正则化。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_32_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 33,
+        "section": null,
+        "excerpt": "Common types of regularization\n– L2 and L1 regularization\nMethod Penalty interpretation\nL1/Lasso 𝑑 penalises the sum of absolute coefficient\n𝜆 ෍ 𝜃\n𝑗 values. It can shrink some coefficients\n𝑗=1\nexactly to zero, so it can act like automatic\nfeature selection. L2/Ridge 𝑑 Minimizes coefficients; pulls coefficients\n2\n𝜆 ෍ 𝜃\n𝑗 toward 0\n𝑗=1\n𝜆 controls regularization strength\nLarge 𝜆: strong regularization"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_32_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 33,
+        "section": null,
+        "excerpt": "It can shrink some coefficients\n𝑗=1\nexactly to zero, so it can act like automatic\nfeature selection. L2/Ridge 𝑑 Minimizes coefficients; pulls coefficients\n2\n𝜆 ෍ 𝜃\n𝑗 toward 0\n𝑗=1\n𝜆 controls regularization strength\nLarge 𝜆: strong regularization\nThe intercept 𝜃 is often not regularized\n0\nThe University of Sydney Page 33"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section15_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.4.1 Lasso 回归（L1 正则化）",
+        "excerpt": "惩罚项：所有参数（除截距外）的绝对值之和。 L1 的约束区域是一个菱形，最优解容易落在坐标轴上（βj=0）"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section13_0_1",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.3.4应对策略",
+        "excerpt": "增加正则化： L1 正则化 (Lasso)：倾向于产生稀疏权重，可用于特征选择。 L2 正则化 (Ridge)：使权重衰减，倾向于让所有权重都较小。 Dropout（用于神经网络）：在训练中随机\"丢弃\"一部分神经元。 早停（用于迭代模型）：当验证集误差不再下降时停止训练。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section14_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.4 正则化 regularization",
+        "excerpt": "正则化 是在代价函数 J(θ)中添加一个惩罚项，限制模型参数的大小，从而抑制模型复杂度，防止过拟合。 λ：正则化参数（超参数），控制惩罚强度 Penalty(θ)：正则化项，常见的L1 正则化和L2 正则化 没有正则化：参数可以任意大，拟合出扭曲的曲线来穿过每个点。 有正则化：参数大的会被“罚款”，模型倾向于选择更小、更平滑的参数，曲线更简单。 λ很大 → 模型过于简单，可能欠拟合。 λ很小或为 0 → 几乎不惩罚，容易过拟合 选择方法：使用交叉验证，尝试多个 λ 值，选择使验证集误差最小的那个。"
+      }
+    ],
+    "gap": "补习资料覆盖L1/Lasso稀疏特征选择、L2/Ridge权重衰减、λ强度、截距不正则化。",
+    "recommendation": "无需补充。",
+    "confidence": 0.85
+  },
+  {
+    "topic_id": "T021",
+    "topic": "梯度下降的动机",
+    "description": "许多模型/代价函数没有 θ 的闭式解，需要通用搜索过程学习 θ：选择 θ 初值，迭代选择新 θ 以降低 J(θ)（如通过梯度下降），直到达到最小值。OLS 线性回归可直接求解，但许多模型直接求解困难或不可用，梯度下降通过逐步改进找到好的参数。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_34_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 35,
+        "section": null,
+        "excerpt": "How to learn 𝜃\n– For many other models/cost functions, there is no closed-form\nsolution of 𝜃\n– A general search procedure for learning 𝜃\n– Choose an initial value for 𝜽\n– Iteratively choose a new value for 𝜽 to reduce 𝐽(𝜽) (e. g. , through\ngradient descent)\n• Until we reach a minimum\nThe University of Sydney Page 35"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_34_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 35,
+        "section": null,
+        "excerpt": "g. , through\ngradient descent)\n• Until we reach a minimum\nThe University of Sydney Page 35"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_40_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 41,
+        "section": null,
+        "excerpt": "Why gradient descent\n– A model is trained by finding parameters that minimise the cost\n– For OLS linear regression, this can be solved directly\n– For many models, a direct solution is difficult or unavailable. – Gradient descent finds good parameters by improving them\nstep by step. The University of Sydney Page 41"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_40_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 41,
+        "section": null,
+        "excerpt": "– Gradient descent finds good parameters by improving them\nstep by step. The University of Sydney Page 41"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section35_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "5.5 损失函数",
+        "excerpt": "逻辑回归的代价函数使用 对数损失 (Log Loss) 或 交叉熵 (Cross-Entropy)： MSE 的问题：如果逻辑回归使用 MSE，损失函数会是非凸函数（Non-convex），有很多局部最小值，难以找到全局最优解。 Cross-Entropy 的优势：它是凸函数，能保证找到全局最优解。 优化方法：梯度下降"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section5_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.2.3 学习率 learning rate",
+        "excerpt": "作用： 控制参数更新的幅度。 当计算出梯度后，学习率决定了参数前进的步长。 学习率过大： 训练震荡，难以收敛，甚至导致损失函数数值爆炸（Loss Nan）。 学习率过小： 收敛速度极慢，需要大量训练时间，容易陷入局部最优解。 常用技巧： 可以从 0. 1, 0. 01, 0. 001 等数量级开始尝试 逐渐缩小学习率（学习率衰减）也是一个好策略"
+      }
+    ],
+    "gap": "补习资料覆盖梯度下降用于优化、学习率，但“无闭式解需通用搜索”动机未明确。",
+    "recommendation": "补充无闭式解动机说明。",
+    "confidence": 0.75
+  },
+  {
+    "topic_id": "T022",
+    "topic": "代价函数直觉示例",
+    "description": "用简单线性回归 ŷ=θ0+θ1x 理解代价函数：固定 θ0=0，改变 θ1。θ1=1 时 J=0（完美拟合玩具数据）；θ1=0.5 时 J≈0.58；θ1=0 时 J≈2.33。每个 θ1 值对应不同拟合线和不同代价 J(θ1)，绘制参数与代价得到代价曲线，该例只有一个全局最小值。",
+    "coverage": "partial",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_35_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 36,
+        "section": null,
+        "excerpt": "Intuition behind cost function ( 1 of 4 )\nWe will use the simple linear regression function to help understand\nthe cost function\nCommon form: 𝑦ො = 𝛼 + 𝛽𝑥\nGeneric form: 𝑦ො = ℎ 𝑥 = 𝜃 + 𝜃 𝑥\n𝜃 0 1\nCost function:\n3. 5\n3\n𝑥 𝑦\n2. 5\nToy example\n1 1\n2\nY\n1. 5\n2 2\n𝜃 = 0 and 𝜃\n= 1\n0 1 1\nY = h (X) = X\n3 3\n𝜃 0. 5\n0\n0 1 2 3 4\nX\nThe University of Sydney Page 36"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_36_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 37,
+        "section": null,
+        "excerpt": "Intuition behind cost function (2 of 4)\nWe are only interested in how 𝜃 change affects the error\n1\n3. 5\nh (x) 3\n𝜃\n3\n2. 5\n2\n2\nY )\n1. 5 𝜃 1\n𝜃 = 1 ( J\n1\n1 1\n𝜃 = 0\n0. 5 0\n0\n0 1 2 3 4 0\n0 0. 5 1 1. 5 2 2. 5\nX\n𝜃\n1 1\n𝐽 0,1 = 1 − 1 2 + 2 − 2 2 + 3 − 3 2 = 0\n2 × 3\nThe University of Sydney Page 37"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_37_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 38,
+        "section": null,
+        "excerpt": "Intuition behind cost function ( 3 of 4)\nthe value of 𝜃 is fixed to 0, now we change the value of 𝜃 to 0. 5\n0 1\nThe prediction function becomes 𝑦ො = 0. 5𝑥\n3. 5\nh (x) 3\n𝜃\n3\n2. 5\n2\n2\nY )\n1. 5 𝜃 1\n𝜃 = 0. 5 ( J\n1\n1 1\n𝜃 = 0\n0. 5 0\n0\n0 1 2 3 4 0\n0 0. 5 1 1. 5 2 2. 5\nX\n𝜃\n1 1\n𝐽 0,0. 5 = 0. 5 − 1 2 + 1 − 2 2 + 1. 5 − 3 2 ≈ 0. 58\nThe University of Sydney 2 × 3 Page 38"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_38_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 39,
+        "section": null,
+        "excerpt": "Intuition behind cost function ( 4 of 4 )\nthe value of 𝜃 is fixed to 0, now we change the value of 𝜃 to 0\n0 1\nThe prediction function becomes 𝑦ො = 0𝑥 = 0\n3. 5\nh (x) 3\n𝜃\n3\n𝐽 0,0 ≈ 2. 33\n2. 5\n2\n2\nY )\n1. 5 𝜃 1\n𝜃 = 0 ( J\n1\n1 1\n𝜃 = 0\n0. 5 0\n0\n0 1 2 3 4 0\n1 0 0. 5 1 1. 5 2 2. 5\nX\n𝐽 0,0 = 0 − 1 2 + 0 − 2 2 + 0 − 3 2 ≈ 2. 33 𝜃\n1\n2 × 3\nHas only one global minimum\nThe University of Sydney Page 39"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_39_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 40,
+        "section": null,
+        "excerpt": "Learning Means Finding the Lowest Cost\n– Each value of θ₁ gives a different fitted line. – Each fitted line gives a different cost J(θ₁). – If we plot many parameter values against their cost, we\nget a cost curve. 𝜃 Model Cost Interpretation\n1\n0 𝑦ො = 0 high Too flat\n0. 5 𝑦ො = 0. 5𝑥 medium closer\n1 𝑦ො = 𝑥 lowest Perfect for the toy data\nThe University of Sydney Page 40"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section35_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "5.5 损失函数",
+        "excerpt": "逻辑回归的代价函数使用 对数损失 (Log Loss) 或 交叉熵 (Cross-Entropy)： MSE 的问题：如果逻辑回归使用 MSE，损失函数会是非凸函数（Non-convex），有很多局部最小值，难以找到全局最优解。 Cross-Entropy 的优势：它是凸函数，能保证找到全局最优解。 优化方法：梯度下降"
+      }
+    ],
+    "gap": "补习资料有J(w)=w²−2w+2案例，但无固定θ0=0改变θ1得J=0/0.58/2.33的代价曲线示例。",
+    "recommendation": "补充该代价函数直觉示例。",
+    "confidence": 0.75
+  },
+  {
+    "topic_id": "T023",
+    "topic": "梯度下降算法与更新规则",
+    "description": "将代价函数视为参数值上的曲线，斜率指示增加代价的方向，为降低代价应向相反方向移动。算法：初始化 θ，重复直到收敛：θj←θj−α*(∂/∂θj)J(θ)，α 为学习率（取小值，如 0.05），对所有 j=0…d 参数同时更新。对线性回归，∂J/∂θj=(1/n)Σ(hθ(x(i))−y(i))xj(i)。假设 α 足够小，梯度下降总是收敛到全局最小值。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_41_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 42,
+        "section": null,
+        "excerpt": "Gradient Descent\n– Think of the cost function as a\n3\ncurve over parameter values. 2. 5\n– A point on the curve represents 2\n)\n𝜃\nthe current parameter value. ( 𝐽 1. 5\n1\n– The slope tells us which\n0. 5\ndirection increases the cost. 0\n0 1 𝜃 2 3\n– To reduce the cost, move in the\nopposite direction. The University of Sydney Page 42"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_42_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 43,
+        "section": null,
+        "excerpt": "Gradient descent\n3\n2. 5\n– Initialize 𝜃\n2\n)\n𝜃\n– Repeat until convergence ( 1. 5\n𝐽\n1\n𝛼 is a learning rate\n𝜕\n𝜃 ← 𝜃 − 𝛼 ∗ 𝐽(𝜽)\n𝑗 𝑗 (taking a small value) 0. 5\n𝜕𝜃\n𝑗\ne. g. 𝛼 = 0."
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_42_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 43,
+        "section": null,
+        "excerpt": "g. 𝛼 = 0. 05 0\n0 1 𝜃 2 3\n𝜃 ← 𝜃 − 𝛼 ∗ 1 σ𝑛 ℎ 𝒙(𝑖) − 𝑦(𝑖) 𝑥 (𝑖)\n𝑗 𝑗 𝑖=1 𝜽 𝑗\n𝑛\nsimultaneous update for 𝜕 𝐽(𝜽) = 𝜕 1 σ𝑛 ℎ (𝒙(𝑖))−𝑦(𝑖) 2\n𝑖=1 𝜽\n𝜕𝜃 𝜕𝜃 2𝑛\n𝑗 𝑗\n2\n𝑗 = 0 … 𝑑 parameters/weights = 𝜕 1 σ𝑛 σ𝑑 𝜃 𝑥 (𝑖) −𝑦(𝑖)\n𝜕𝜃 2𝑛 𝑖=1 𝑘=0 𝑘 𝑘\n𝑗\nGradient descent always converges to the = 1 σ𝑛 σ𝑑 𝜃 𝑥 (𝑖) −𝑦(𝑖) × 𝜕 σ𝑑 𝜃 𝑥 (𝑖) −𝑦(𝑖)\n𝑛 𝑖=1 𝑘=0 𝑘 𝑘 𝜕𝜃𝑗 𝑘=0 𝑘 𝑘\nglobal minimum (assuming 𝛼 is small ) = 1 σ𝑛 σ𝑑 𝜃 𝑥 (𝑖) −𝑦(𝑖"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_42_2",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 43,
+        "section": null,
+        "excerpt": "𝛼 = 0. 05 0\n0 1 𝜃 2 3\n𝜃 ← 𝜃 − 𝛼 ∗ 1 σ𝑛 ℎ 𝒙(𝑖) − 𝑦(𝑖) 𝑥 (𝑖)\n𝑗 𝑗 𝑖=1 𝜽 𝑗\n𝑛\nsimultaneous update for 𝜕 𝐽(𝜽) = 𝜕 1 σ𝑛 ℎ (𝒙(𝑖))−𝑦(𝑖) 2\n𝑖=1 𝜽\n𝜕𝜃 𝜕𝜃 2𝑛\n𝑗 𝑗\n2\n𝑗 = 0 … 𝑑 parameters/weights = 𝜕 1 σ𝑛 σ𝑑 𝜃 𝑥 (𝑖) −𝑦(𝑖)\n𝜕𝜃 2𝑛 𝑖=1 𝑘=0 𝑘 𝑘\n𝑗\nGradient descent always converges to the = 1 σ𝑛 σ𝑑 𝜃 𝑥 (𝑖) −𝑦(𝑖) × 𝜕 σ𝑑 𝜃 𝑥 (𝑖) −𝑦(𝑖)\n𝑛 𝑖=1 𝑘=0 𝑘 𝑘 𝜕𝜃𝑗 𝑘=0 𝑘 𝑘\nglobal minimum (assuming 𝛼 is small ) = 1 σ𝑛 σ𝑑 𝜃 𝑥 (𝑖) −𝑦(𝑖) 𝑥"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section9_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.2.5 案例分析",
+        "excerpt": "求一维二次函数的最小值： J(w)=w2−2w+2 假设我们随机初始化参数 w的值为 3。 当前猜测： w0=3 代入函数： J(3)=32−2×3+2=5 直观感受：此时我们处于山坡较高的位置（函数值为 5），而我们的目标是走到谷底（函数值最小）。 在 w=3处的梯度：2×3−2=4 方向判断： 梯度值为正数 (4)。 规则：梯度指向函数增长最快的方向。 因此，我们要想让函数值变小（下山），就必须往反方向（负方向）走。 学习率 α=0. 2，根据梯度下降公式进行更新： w1​=3−0. 2×4=2. 2"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section5_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.2.3 学习率 learning rate",
+        "excerpt": "作用： 控制参数更新的幅度。 当计算出梯度后，学习率决定了参数前进的步长。 学习率过大： 训练震荡，难以收敛，甚至导致损失函数数值爆炸（Loss Nan）。 学习率过小： 收敛速度极慢，需要大量训练时间，容易陷入局部最优解。 常用技巧： 可以从 0. 1, 0. 01, 0. 001 等数量级开始尝试 逐渐缩小学习率（学习率衰减）也是一个好策略"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section35_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "5.5 损失函数",
+        "excerpt": "逻辑回归的代价函数使用 对数损失 (Log Loss) 或 交叉熵 (Cross-Entropy)： MSE 的问题：如果逻辑回归使用 MSE，损失函数会是非凸函数（Non-convex），有很多局部最小值，难以找到全局最优解。 Cross-Entropy 的优势：它是凸函数，能保证找到全局最优解。 优化方法：梯度下降"
+      }
+    ],
+    "gap": "补习资料覆盖梯度下降更新公式、学习率、方向判断，但线性回归偏导公式与同时更新未明确。",
+    "recommendation": "补充线性回归梯度公式与同时更新。",
+    "confidence": 0.75
+  },
+  {
+    "topic_id": "T024",
+    "topic": "梯度下降直觉与学习率选择",
+    "description": "以 J(w)=w²−2w+2 为例，微积分求导 2w−2=0 得 w=1，但复杂代价函数难以直接求解。梯度下降从随机猜测（如 w=3）开始，计算导数判断方向，用 wi+1=wi−α*dJ(w)/dw 更新（如 α=0.2），逐步逼近最小值。学习率 α 太小则收敛慢，太大可能越过最小值，好的策略是逐渐缩小学习率。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_43_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 44,
+        "section": null,
+        "excerpt": "Intuition behind gradient descent\n– Given simple cost function\nJ(𝑤) = 𝑤 2 − 2𝑤 + 2,\nfind the value of w to minimise J(𝑤)\n– From Calculus, by finding the\nderivative and set it equal to\nzero:\n𝑑𝐽(𝑤)\n= 2𝑤 − 2 = 0 ⟹ 𝑤 = 1\n𝑑𝑤\nBut this is hard to solve for more complicated cost function! The University of Sydney Page 44"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_44_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 45,
+        "section": null,
+        "excerpt": "Intuition behind gradient descent\n– So, we pick a random number\n– Let w= 3, which obviously is wrong\n– Step 1: we take the derivative of the function\n𝑑𝐽(𝑤)\n• = 2𝑤 − 2\n𝑑𝑤\n– Step 2: we study the derivative at the point we guessed (𝑥 = 3)\n𝑑𝐽(𝑤)\n• = 2 ∗ 3 − 2 = 4\n𝑑𝑤\n– Given that the derivative is positive, we know that the value is getting\nlarger moving to the right (forward)\n– Therefore, we need to m"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_45_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 46,
+        "section": null,
+        "excerpt": "Intuition behind gradient descent\n– If we have guessed w = −1 instead, the derivative would have been −4\n– then we would know that the function is getting smaller\n– By studying the derivative of the current guess, we know if we are getting\ncloser or further away from the minimum\n– So here is the equation\n𝑑𝐽(𝑤)\n• 𝑤 = 𝑤 − 𝛼 ∗ , 𝛼 is the learning rate, e. g. 𝛼 = 0. 2\n𝑖+1 𝑖\n𝑑𝑤\n– Given our example, we "
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_46_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 47,
+        "section": null,
+        "excerpt": "Intuition behind gradient descent\n– We repeat this process again at 𝑤 = 2. 2\n1\n𝑑𝐽(𝑤)\n• = 2𝑤 − 2\n𝑑𝑤\n𝑑𝐽(𝑤=2. 2)\n• = 2 ∗ 2. 2 − 2 = 2. 4\n𝑑𝑤\n• 𝑤 = 2. 2 − 0. 2 ∗ 2. 4 = 1. 72 , we moved closer\n2\n– At 𝑤 = 1. 72\n2\n𝑑𝐽(𝑤)\n• = 2𝑤 − 2\n𝑑𝑤\n𝑑𝐽(𝑤=1. 72)\n• = 2 ∗ 1. 72 − 2 = 1. 44\n𝑑𝑤\n• 𝑤 = 1. 72 − 0. 2 ∗ 1. 44 = 1. 432 , we moved closer\n3\n– If we keep repeating this process, we can find the minimum point of the\nso"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_47_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 48,
+        "section": null,
+        "excerpt": "Selecting learning rate\n– If 𝛼 is small, gradient\ndescent can be slow\n– If 𝛼 is too large, gradient\ndescent might overshoot the\nminimum\n– One good strategy is\ngradually shrinking the\nlearning rate\nThe University of Sydney Page 48"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section9_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.2.5 案例分析",
+        "excerpt": "求一维二次函数的最小值： J(w)=w2−2w+2 假设我们随机初始化参数 w的值为 3。 当前猜测： w0=3 代入函数： J(3)=32−2×3+2=5 直观感受：此时我们处于山坡较高的位置（函数值为 5），而我们的目标是走到谷底（函数值最小）。 在 w=3处的梯度：2×3−2=4 方向判断： 梯度值为正数 (4)。 规则：梯度指向函数增长最快的方向。 因此，我们要想让函数值变小（下山），就必须往反方向（负方向）走。 学习率 α=0. 2，根据梯度下降公式进行更新： w1​=3−0. 2×4=2. 2"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section5_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.2.3 学习率 learning rate",
+        "excerpt": "作用： 控制参数更新的幅度。 当计算出梯度后，学习率决定了参数前进的步长。 学习率过大： 训练震荡，难以收敛，甚至导致损失函数数值爆炸（Loss Nan）。 学习率过小： 收敛速度极慢，需要大量训练时间，容易陷入局部最优解。 常用技巧： 可以从 0. 1, 0. 01, 0. 001 等数量级开始尝试 逐渐缩小学习率（学习率衰减）也是一个好策略"
+      }
+    ],
+    "gap": "补习资料覆盖J(w)=w²−2w+2、w0=3、α=0.2更新至2.2及学习率过大过小问题。",
+    "recommendation": "无需补充。",
+    "confidence": 0.9
+  },
+  {
+    "topic_id": "T025",
+    "topic": "批量、随机与小批量梯度下降",
+    "description": "三者区别在于每次更新使用多少数据：批量使用全部训练数据（稳定但慢），随机使用一个数据点（快但有噪声），小批量使用一小批数据（常见折中）。三者学习同一组共享模型参数，仅在每步梯度估计方式上不同。批量需扫描整个训练集才走一步，n 大时开销高；随机立即开始进展但可能不收敛到最小值。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_48_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 49,
+        "section": null,
+        "excerpt": "How Much Data Is Used Per Update? – Gradient descent updates the model parameters repeatedly\n– The difference between batch, stochastic and mini-batch\ngradient descent is how much data is used to calculate each\nupdate\nMethod Data used per update Update behaviour\nBatch All training data Stable but can be slow\nStochastic One data point Fast but noisy\nMini-batch A small batch of data Common compromis"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_48_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 49,
+        "section": null,
+        "excerpt": "They\ndiffer only in how the gradient is estimated at each step. The University of Sydney Page 49"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_49_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 50,
+        "section": null,
+        "excerpt": "Batch vs stochastic gradient descents\n– Batch: all n training examples are used to calculate one update\n– Repeat until converge 𝜃 ← 𝜃 − 𝛼 1 σ𝑛 ℎ 𝒙(𝑖) − 𝑦(𝑖) 𝑥 (𝑖) for every 𝑗\n𝑗 𝑗 𝑖=1 𝜽 𝑗\n𝑛\n– Accurate but slow:\n• has to scan through the entire training set before taking a single step\n• costly operation if 𝑛 is large\n– Stochastic:\nFor 𝑖 = 1 to 𝑛\n(𝑖)\n𝜃 ← 𝜃 − 𝛼 ℎ 𝒙(𝑖) − 𝑦(𝑖) 𝑥 , for every 𝑗\n𝑗 𝑗 𝜽 𝑗\n– "
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_49_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 50,
+        "section": null,
+        "excerpt": "Batch vs stochastic gradient descents\n– Batch: all n training examples are used to calculate one update\n– Repeat until converge 𝜃 ← 𝜃 − 𝛼 1 σ𝑛 ℎ 𝒙(𝑖) − 𝑦(𝑖) 𝑥 (𝑖) for every 𝑗\n𝑗 𝑗 𝑖=1 𝜽 𝑗\n𝑛\n– Accurate but slow:\n• has to scan through the entire training set before taking a single step\n• costly operation if 𝑛 is large\n– Stochastic:\nFor 𝑖 = 1 to 𝑛\n(𝑖)\n𝜃 ← 𝜃 − 𝛼 ℎ 𝒙(𝑖) − 𝑦(𝑖) 𝑥 , for every 𝑗\n𝑗 𝑗 𝜽 𝑗\n– "
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section6_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "批量梯度下降 (Batch Gradient Descent):",
+        "excerpt": "做法：每次更新参数时，计算整个训练集的梯度。 优点：方向准确，直奔全局最优。 缺点：当数据量很大时，计算非常慢。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section7_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "随机梯度下降 (Stochastic Gradient Descent, SGD)",
+        "excerpt": "做法：每次只用一个样本来计算梯度并更新参数。 优点：速度极快，可以在线学习。 缺点：路径非常曲折（因为单个样本有噪声），虽然总体是向下的，但会左右摇摆。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section8_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "小批量梯度下降 (Mini-batch Gradient Descent)",
+        "excerpt": "做法：每次使用一小批样本（例如 32、64、128 个）来计算梯度。 优点：结合了前两者的优点，既利用了矩阵运算的加速（效率高），又保持了梯度的相对稳定性。 这是深度学习中最常用的方法。"
+      }
+    ],
+    "gap": "补习资料覆盖批量、随机、小批量梯度下降的数据使用与优缺点。",
+    "recommendation": "无需补充。",
+    "confidence": 0.9
+  },
+  {
+    "topic_id": "T026",
+    "topic": "回归与分类的区别",
+    "description": "回归预测数值，输出连续变量（如实值），例如预测房价；分类为每个样本预测类别，输出离散/分类变量，例如预测客户是否违约。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_52_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 53,
+        "section": null,
+        "excerpt": "Regression vs classification\n– Regression predicts a – Classification predicts a\nnumerical value class to each example\n– Output is a continuous – Output is a discrete /\nvariable (real value) categorical variable\n– E. g. , predict house price – E. g. , predict whether a\ncustomer will default or not\nThe University of Sydney Page 53"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_52_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 53,
+        "section": null,
+        "excerpt": "g. , predict whether a\ncustomer will default or not\nThe University of Sydney Page 53"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section40_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "表格 3",
+        "excerpt": "| 分类 | 回归\n预测目标 | 离散的类别标签categoric | 连续的数值numeric\n输出示例 | “是垃圾邮件”或“不是垃圾邮件” | 房价 453,200 元\n典型算法 | 逻辑回归、决策树、SVM、KNN | 线性回归、决策树回归、SVR\n评估指标 | 准确率、精确率、召回率、F1 | MSE、RMSE、R²"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section2_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.1.2均方误差MSE",
+        "excerpt": "适用于回归问题（预测连续值，如房价、温度） 均方误差计算的是所有样本的预测值与真实值之差的平方的平均值。 特点：由于使用了平方，它对较大的误差惩罚更重（误差为 2 时，平方后贡献为 4；误差为 10 时，平方后贡献高达 100）。"
+      }
+    ],
+    "gap": "补习资料覆盖回归预测连续值、分类预测离散类别及房价示例。",
+    "recommendation": "无需补充。",
+    "confidence": 0.9
+  },
+  {
+    "topic_id": "T027",
+    "topic": "逻辑回归模型与 sigmoid 函数",
+    "description": "逻辑回归预测分类标签的概率，例如给定债务金额和逾期次数预测违约概率。二分类中目标 Y∈{0,1}，Y=1 为正类，Y=0 为负类，通常想要 p̂=P(Y=1|X)。步骤1：计算线性得分 z=θ0+θ1x1+…+θdxd；步骤2：转换为概率 p̂=P(Y=1|X)=1/(1+e^(−z))。sigmoid 函数将输出保持在 0 和 1 之间，z→∞ 时趋于 1，z→−∞ 时趋于 0。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_53_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 54,
+        "section": null,
+        "excerpt": "Logistic regression\n– Predict probability of\ncategorical label\n– E. g. , probability of\ndefaulting on a loan given\n– Amount of debt\n– Late payment count\nhttp://www. toshistats. net/101-4-logistic-regression/\nThe University of Sydney Page 54"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_54_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 55,
+        "section": null,
+        "excerpt": "Logistic regression for classification\n– In binary classification, the target is usually: 𝑌 ∈ {0,1}\n– Y=1: positive class\n– Y=0: negative\n– A linear regression model can predict any real number\n– 𝑦ො = 𝜃 + 𝜃 𝑥 + 𝜃 𝑥 +. . +𝜃 𝑥\n0 1 1 1 1 𝑑 𝑑\n– For classification, we often want\n– 𝑝Ƹ = 𝑃(𝑌 = 1|𝑋)\nThe University of Sydney Page 55"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_55_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 56,
+        "section": null,
+        "excerpt": "Logistic Regression Model\n1\n– Step 1: calculate a linear score: 𝑙𝑖𝑚 → 1\n𝑧→∞ 1+𝑒−𝑧\nz = 𝜃 + 𝜃 𝑥 + 𝜃 𝑥 +. . +𝜃 𝑥\n0 1 1 1 1 𝑑 𝑑\n– Step 2: convert the score into a\nprobability:\n1\n𝑝Ƹ = 𝑃(𝑌 = 1|𝑋) =\n1 + 𝑒−𝑧\n– The sigmoid function keeps the output\nbetween 0 and 1 1\n𝑙𝑖𝑚 → 0\n𝑧→−∞ 1+𝑒−𝑧\nThe University of Sydney Page 56"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_55_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 56,
+        "section": null,
+        "excerpt": ". +𝜃 𝑥\n0 1 1 1 1 𝑑 𝑑\n– Step 2: convert the score into a\nprobability:\n1\n𝑝Ƹ = 𝑃(𝑌 = 1|𝑋) =\n1 + 𝑒−𝑧\n– The sigmoid function keeps the output\nbetween 0 and 1 1\n𝑙𝑖𝑚 → 0\n𝑧→−∞ 1+𝑒−𝑧\nThe University of Sydney Page 56"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section31_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "5.1 核心思想",
+        "excerpt": "第一步：计算线性组合（和线性回归一模一样）： z 可以是任意实数。 第二步：将 z 送入 Sigmoid 函数，压缩到 (0, 1)： 这个 hθ(x) 就是预测为正类的概率 P(y=1∣x;θ)。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section30_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "5.逻辑回归 Logistic regression",
+        "excerpt": "逻辑回归 是一种用于二分类的监督学习算法，它在线性组合的基础上加了一个 Sigmoid 函数，将结果压缩到 (0, 1) 之间，作为样本属于正类的概率。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section43_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "表格 6",
+        "excerpt": "z 的值 | Sigmoid 输出 | 含义\nz=0 | 0. 5 | 模型不确定，正负概率各半\nz 很大（如 +5） | ≈ 0. 993 | 几乎确定是正类\nz 很小（如 -5） | ≈ 0. 007 | 几乎确定是负类\nz→+∞ | → 1 | \nz→−∞ | → 0 |"
+      }
+    ],
+    "gap": "补习资料覆盖线性得分z、Sigmoid转概率、输出(0,1)及z→∞/→−∞极限。",
+    "recommendation": "无需补充。",
+    "confidence": 0.9
+  },
+  {
+    "topic_id": "T028",
+    "topic": "从概率到类别标签的阈值",
+    "description": "逻辑回归预测 p̂=P(Y=1|X)，用阈值将概率转换为类别预测：p̂≥0.5 时 Ŷ=1，p̂<0.5 时 Ŷ=0。阈值可根据问题调整。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_56_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 57,
+        "section": null,
+        "excerpt": "From probability to class label\n– Logistic regression predicts:\n𝑝Ƹ = 𝑃(𝑌 − 1|𝑋)\n– A threshold converts probability into a class prediction:\n1, 𝑝ෝ ≥ 0. 5\n෠\n𝑌 = ቊ\n0, 𝑝ෝ < 0. 5\n– The threshold can be adjusted depending on the problem\nThe University of Sydney Page 57"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_56_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 57,
+        "section": null,
+        "excerpt": "5\n෠\n𝑌 = ቊ\n0, 𝑝ෝ < 0. 5\n– The threshold can be adjusted depending on the problem\nThe University of Sydney Page 57"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section33_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "5.3 决策边界",
+        "excerpt": "有了概率值，我们还需要一个标准来下结论。 逻辑回归通常以 0. 5 为界限： 预测概率 ≥ 0. 5 → 预测为 类别 1（例如：是垃圾邮件）。 预测概率 < 0. 5 → 预测为 类别 0（例如：不是垃圾邮件）。 Tips：可以通过调整阈值（Threshold）来改变决策边界"
+      }
+    ],
+    "gap": "补习资料覆盖0.5阈值转类别及可调阈值。",
+    "recommendation": "无需补充。",
+    "confidence": 0.9
+  },
+  {
+    "topic_id": "T029",
+    "topic": "逻辑回归训练与交叉熵损失",
+    "description": "需要奖励正确类别高概率的代价函数。逻辑回归常用对数损失/交叉熵而非最小二乘误差，模型自信地犯错时代价高。公式：J(θ)=−(1/n)Σ[yi log p̂i+(1−yi)log(1−p̂i)]。单例损失为 −[yi log p̂i+(1−yi)log(1−p̂i)]：实际类 1 且 p̂=0.95 时损失 0.05，p̂=0.60 时 0.51，p̂=0.10（自信但错误）时 2.30；实际类 0 时对称。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_57_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 58,
+        "section": null,
+        "excerpt": "Training Logistic Regression\n– We need a cost function that rewards high probability for the\ncorrect class. – Logistic regression commonly uses log loss / cross-entropy,\ninstead of Least Square error\n– The cost is high when the model is confidently wrong\n– The formula is\n𝑛\n1\n𝐽 𝜃 = − ෍ 𝑦 log 𝑝Ƹ + 1 − 𝑦 log(1 − 𝑝Ƹ )\n𝑖 𝑖 𝑖 𝑖\n𝑛\n𝑖=1\nThe University of Sydney Page 58"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_57_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 58,
+        "section": null,
+        "excerpt": "Training Logistic Regression\n– We need a cost function that rewards high probability for the\ncorrect class. – Logistic regression commonly uses log loss / cross-entropy,\ninstead of Least Square error\n– The cost is high when the model is confidently wrong\n– The formula is\n𝑛\n1\n𝐽 𝜃 = − ෍ 𝑦 log 𝑝Ƹ + 1 − 𝑦 log(1 − 𝑝Ƹ )\n𝑖 𝑖 𝑖 𝑖\n𝑛\n𝑖=1\nThe University of Sydney Page 58"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_58_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 59,
+        "section": null,
+        "excerpt": "Cross entry loss example\n– The individual case loss: − 𝑦 log 𝑝Ƹ + 1 − 𝑦 log(1 − 𝑝Ƹ )\n𝑖 𝑖 𝑖 𝑖\nActual class 𝑝Ƹ = 𝑃(𝑌 = 1|𝑋) Interpretation Cross-entropy loss\n1 0. 95 Confident and correct −log(0. 95) = 0. 05\n1 0. 60 Correct, but less confident −log(0. 60) = 0. 51\n1 0. 10 Confident but wrong −log(0. 10) = 2. 30\n0 0. 05 Confident and correct −log(0. 95) = 0. 05\n0 0. 40 Correct but less confident −log("
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_58_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 59,
+        "section": null,
+        "excerpt": "10) = 2. 30\nThe University of Sydney Page 59"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section35_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "5.5 损失函数",
+        "excerpt": "逻辑回归的代价函数使用 对数损失 (Log Loss) 或 交叉熵 (Cross-Entropy)： MSE 的问题：如果逻辑回归使用 MSE，损失函数会是非凸函数（Non-convex），有很多局部最小值，难以找到全局最优解。 Cross-Entropy 的优势：它是凸函数，能保证找到全局最优解。 优化方法：梯度下降"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section3_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.1.3交叉熵损失 Cross entropy loss",
+        "excerpt": "适用于分类问题（预测类别，如图片是猫还是狗） 交叉熵损失衡量的是模型预测出的概率分布与真实标签的概率分布之间的差异。 目标：让模型对正确答案的预测概率尽可能高（接近1），对其他错误答案的预测概率尽可能低（接近0）。 工作原理：模型预测得越准，交叉熵损失值就越小；预测得越差，损失值就越大。 在模型训练过程中，我们的目标就是通过不断调整模型参数，来最小化这个交叉熵损失。 直观理解：当真实标签为 1 时，我们希望模型预测的概率也接近 1。 如果此时模型预测了一个很低的概率（比如 0. 1），那么 log(0. 1) 会是一个很大的负数，再乘以前面的负号，就会导致损失值变得很大，表示惩罚很重。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section3_0_1",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.1.3交叉熵损失 Cross entropy loss",
+        "excerpt": "1），那么 log(0. 1) 会是一个很大的负数，再乘以前面的负号，就会导致损失值变得很大，表示惩罚很重。 二分类交叉熵损失 这个公式就是将所有样本（无论是正类还是负类）的预测误差加起来求平均，用来评估模型整体的分类准确度。"
+      }
+    ],
+    "gap": "补习资料覆盖交叉熵/对数损失、自信犯错高惩罚、公式与直观理解，但具体数值示例（0.05/0.51/2.30）未明确。",
+    "recommendation": "补充交叉熵数值示例。",
+    "confidence": 0.8
+  },
+  {
+    "topic_id": "T030",
+    "topic": "机器学习实践技巧与特征缩放",
+    "description": "先将 ML 模型与最简单基线比较并迭代；最佳策略常是更简单模型加更多/更好数据；始终在未用于训练的留出数据上测试。确保特征在相似尺度上，重缩放特征使其零均值、单位方差：x̄j=(1/n)Σxj(i)，替换为 xj(i)=(xj(i)−x̄j)/sj，sj 为特征 j 的标准差。缩放后更容易找到对所有参数都适用的学习率；若特征尺度差异大，适合一个权重的学习率可能对另一个权重过大或过小。",
+    "coverage": "covered",
+    "school_sources": [
+      {
+        "chunk_id": "09_linear_regression_50c9a546_60_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 61,
+        "section": null,
+        "excerpt": "Tips and tricks\n– Compare ML models to the simplest baseline first; Iterate\n– Best strategy is often a simpler model with more/better data\n– Always test on held-out data that hasn’t been used for training\nThe University of Sydney Page 61"
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_61_0",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 62,
+        "section": null,
+        "excerpt": "Tips and tricks\n– Make sure features are on a similar scale. – Rescale features to have zero mean and unit variance\n– Let 𝑥ҧ be the mean of feature 𝑗: 𝑥ҧ =\n1 σ𝑛\n𝑥\n(𝑖)\n𝑗 𝑗 𝑖=1 𝑗\n𝑛\n– Replace each value with:\n(𝑖)\n𝑥 − 𝑥ത\n(𝑖) 𝑗 𝑗\n𝑥 =\n𝑗 𝑠\n𝑗\n– 𝑠 is the standard deviation of feature 𝑗\n𝑗\n– After recalling features, it is easier to find a learning rate that works\nwell for all weights. – If the features are "
+      },
+      {
+        "chunk_id": "09_linear_regression_50c9a546_61_1",
+        "file_name": "09_linear_regression_and_logistic_regression.pdf",
+        "page": 62,
+        "section": null,
+        "excerpt": "– If the features are on vastly different scales, a learning rate that works well\nfor updating one weight might be too large or too small to update the other\nweight equally well. The University of Sydney Page 62"
+      }
+    ],
+    "tutoring_sources": [
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section36_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "6. Tips",
+        "excerpt": "与简单 baseline 比较 简单模型 + 更多数据往往更好 始终在 held-out 数据上测试 任何预测模型 = 模型形式 Model Form + 成本函数 Cost Function + 优化算法"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section21_0_1",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.6 特征缩放",
+        "excerpt": "通过缩放，让所有特征处于相似的数值范围（如均值为 0，方差为 1），使等高线图变成圆形。 这样梯度下降可以沿着最短路径直接走向全局最小值，极大地提升训练速度。"
+      },
+      {
+        "chunk_id": "tutoring_8dc0d7188f3c_section5_0_0",
+        "file_name": "9 Linear Regression & Logistic Regression .docx",
+        "page": null,
+        "section": "2.2.3 学习率 learning rate",
+        "excerpt": "作用： 控制参数更新的幅度。 当计算出梯度后，学习率决定了参数前进的步长。 学习率过大： 训练震荡，难以收敛，甚至导致损失函数数值爆炸（Loss Nan）。 学习率过小： 收敛速度极慢，需要大量训练时间，容易陷入局部最优解。 常用技巧： 可以从 0. 1, 0. 01, 0. 001 等数量级开始尝试 逐渐缩小学习率（学习率衰减）也是一个好策略"
+      }
+    ],
+    "gap": "补习资料覆盖baseline比较、held-out测试、特征缩放零均值单位方差及学习率，但标准化公式未明确。",
+    "recommendation": "补充特征缩放公式。",
+    "confidence": 0.8
+  }
+]

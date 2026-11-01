@@ -18,7 +18,7 @@ cp .env.example .env   # 编辑 .env 添加 DEEPSEEK_API_KEY
 
 # 4. 启动本地教师工作台（Streamlit UI，默认加载 COMP5310 课程）
 streamlit run app.py
-#    界面：资料库（文档清单 + 上传/刷新 PDF）/ 教学任务（备课·期末复习 / 作业讲题）
+#    界面：资料库 / 教学任务 / 新旧课件比对与更新
 
 # 5. 运行测试
 python -m pytest tests/ -v
@@ -69,6 +69,7 @@ docker compose up -d --build
 | [🏗️ 架构设计](docs/ARCHITECTURE.md) | 系统分层、技术选型、数据流 |
 | [📁 目录结构](docs/DIRECTORY_GUIDE.md) | 文件夹用途与数据组织 |
 | [⚖️ 隐私与学术诚信](docs/PRIVACY_AND_INTEGRITY.md) | 数据、版权、诚信边界 |
+| [🧭 新旧课件比对执行方案](docs/AGENTIC_COURSE_MATERIAL_UPDATE_PLAN.md) | LangGraph 工作流、审核边界与后续阶段 |
 | [🧭 产品决策记录](docs/decisions/) | ADR-001~004 关键取舍 |
 
 ## ✨ 核心功能
@@ -76,7 +77,7 @@ docker compose up -d --build
 **Phase 1：可引用知识库 ✅**
 - 📄 PDF 解析（保留页码与元数据，仅支持 PDF）
 - ✂️ 语义分块（结构感知，≤400 token，精确字符位置追踪）
-- 🔍 Embedding 语义检索（多语言、跨语言、离线，固定 e5-small）
+- 🔍 Hybrid 混合检索：多语言 embedding 语义召回 + BM25 关键词召回，并用 RRF 融合排序（本地运行）
 - 💾 本地 JSON 索引 + embedding 向量缓存
 
 **Phase 2：RAG 生成 ✅**
@@ -98,6 +99,14 @@ docker compose up -d --build
 - 🧭 产品决策记录（ADR-001~004）
 - 📜 隐私、版权与学术诚信说明
 
+**Agentic Demo：新旧课件比对与更新**
+- 🧭 LangGraph 编排 PDF/DOCX 解析、知识点抽取、Hybrid Search 证据召回和覆盖报告
+- 🧑‍🏫 教师审核后，可把已选建议生成独立的 DOCX 修订副本；上传原件不被覆盖
+- 📄 本机安装 LibreOffice 后可将修订版 DOCX 可选导出为 PDF
+- 🔁 同名资料库课件替换须单独确认；替换前保留可在资料库页恢复的旧版本备份
+- 🔒 使用前明确确认课件文本会发送到 DeepSeek API；文件解析、PDF 转换和索引替换均在本机进行
+- 📄 单文件最大 50 MB、最多 120 个文本片段；更大的课件需拆分后比对
+
 ## 🎯 教学任务
 
 | 任务 | 输入 | 输出 |
@@ -114,8 +123,10 @@ docker compose up -d --build
 
 - **📚 资料库**：课程统计、文档清单（文件/类型/页数/解析质量/片段数）、上传 PDF 自动合并进知识库，并支持一键刷新
 - **🎯 教学任务**：多选「资料范围」（勾选期末复习 = 全选全部资料）→ 选任务（备课·期末复习 / 作业讲题）→ 结果内联展示：来源引用、需确认项、可编辑，并导出 Markdown / HTML / JSON，同时显示耗时与成本
+- **🆕 新旧课件比对**：覆盖报告、教师审核、DOCX 修订版与可选 PDF；可另外确认同名 PDF 资料替换，旧版可从资料库页回滚
 
 > 只支持真实生成：必须配置 `DEEPSEEK_API_KEY`（.env），未配置时生成会报错提示。
+> PDF 导出可选依赖本机 LibreOffice；未安装时仍可下载 DOCX 修订版。
 
 ## 📊 项目结构
 
@@ -134,4 +145,4 @@ docker compose up -d --build
 ---
 
 **当前状态：** Phase 1-4 全部完成  
-**最后更新：** 2026-09-08
+**最后更新：** 2026-10-22

@@ -5,6 +5,7 @@
 
 # 文档处理
 pdfplumber==0.11.10
+python-docx==1.1.2
 
 # 环境与配置
 python-dotenv==1.2.3
@@ -12,6 +13,7 @@ python-dotenv==1.2.3
 # LLM API
 openai==3.5.0
 requests==2.34.2
+langgraph==0.2.76
 
 # 数值计算
 # numpy<2 是因为 Intel Mac 上 torch 最高只到 2.2.2，而它要求 numpy<2
