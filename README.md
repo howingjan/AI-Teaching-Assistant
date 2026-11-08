@@ -18,7 +18,7 @@ cp .env.example .env   # 编辑 .env 添加 DEEPSEEK_API_KEY
 
 # 4. 启动本地教师工作台（Streamlit UI，默认加载 COMP5310 课程）
 streamlit run app.py
-#    界面：资料库 / 教学任务 / 新旧课件比对与更新
+#    界面：资料库 / 教学任务 / 新旧课件比对
 
 # 5. 运行测试
 python -m pytest tests/ -v
@@ -62,57 +62,48 @@ docker compose up -d --build
 - **没有课件怎么办？** 在「📚 资料库」上传 PDF；或放入 `data/<课程名>/lectures`、`uploads` 后点「🔄 刷新」。
 - **只支持真实生成**：请务必在 `.env` 填入 `DEEPSEEK_API_KEY`，未配置时生成会报错提示。
 
-## �📚 文档
+## 🛠 技术栈（对齐岗位关键词）
 
-| 文档 | 说明 |
+| 领域 | 实现 |
 |------|------|
-| [🏗️ 架构设计](docs/ARCHITECTURE.md) | 系统分层、技术选型、数据流 |
-| [📁 目录结构](docs/DIRECTORY_GUIDE.md) | 文件夹用途与数据组织 |
-| [⚖️ 隐私与学术诚信](docs/PRIVACY_AND_INTEGRITY.md) | 数据、版权、诚信边界 |
-| [📊 评估体系](docs/EVALUATION.md) | 检索/生成质量评测、黄金问题集、回归流程 |
-| [🧭 新旧课件比对执行方案](docs/AGENTIC_COURSE_MATERIAL_UPDATE_PLAN.md) | LangGraph 工作流、审核边界与后续阶段 |
-| [🧭 产品决策记录](docs/decisions/) | ADR-001~004 关键取舍 |
+| RAG / 检索 | Hybrid 混合检索：`multilingual-e5-small` embedding + BM25 + RRF 融合（本地运行） |
+| 防幻觉 | 引用校验 `CitationValidator`：幻觉页码/文档/片段进入 `needs_review`，不静默放行 |
+| 结构化输出 | 提示词模板 + `json_object` + 抗截断的平衡括号 JSON 解析 |
+| Agents | LangGraph 编排「新旧课件比对」工作流，含人工审核边界（human-in-the-loop） |
+| 文档智能 | PDF（`pdfplumber`）+ DOCX（`python-docx`）解析、分块与来源定位 |
+| 多模型后端 | DeepSeek / OpenAI / Azure OpenAI，环境变量切换 |
+| 评测 | Hit@k / Recall@k / MRR / Precision@k 检索评估 + LLM-as-judge（忠实度 / 相关性） |
+| API 工程 | FastAPI + Pydantic 校验 + 统一错误码 + `/health` 存活探针 |
+| 可观测性 | UsageMonitor 记录每次生成的耗时 / tokens / 预估成本 |
+| 工程实践 | Docker + docker-compose、GitHub Actions CI（lint + 测试 + 覆盖率）与 GHCR 发布 |
+| 安全与治理 | 本地检索优先（资料不出本机）、非 root 容器、无 key 不降级 |
 
-## ✨ 核心功能
+## ✨ 核心能力
 
-**Phase 1：可引用知识库 ✅**
-- 📄 PDF 解析（保留页码与元数据，仅支持 PDF）
-- ✂️ 语义分块（结构感知，≤400 token，精确字符位置追踪）
-- 🔍 Hybrid 混合检索：多语言 embedding 语义召回 + BM25 关键词召回，并用 RRF 融合排序（本地运行）
-- 💾 本地 JSON 索引 + embedding 向量缓存
+**知识库与检索**
+- 📄 PDF 解析（保留页码与元数据），语义分块（结构感知，≤400 token）
+- 🔍 Hybrid 混合检索：多语言 embedding + BM25 + RRF 融合，向量缓存到磁盘
+- 💾 本地 JSON 索引 + embedding 向量缓存（本地优先，资料不出本机）
 
-**Phase 2：RAG 生成 ✅**
+**RAG 生成**
 - 🤖 基于所选资料（可多选）生成备课 / 期末复习 / 作业讲题
-- 📚 备课内容覆盖所选资料的**全部知识点**，并自动生成约 3 道练习题
-- 🔗 每条内容带来源引用（页码 + chunk_id，防幻觉）
-- 🧱 结构化输出（学习目标、前置知识、讲解、术语、例题、练习）
-- ✅ 引用校验（识别幻觉页码/文档/片段）
-- ⚠️ 资料不足提醒
+- 📚 备课覆盖所选资料全部知识点，自动生成约 3 道练习题；按课堂时长调整内容规模
+- 🔗 每条内容带来源引用（页码 + chunk_id），结构化输出 + 引用校验防幻觉
+- ✏️ 作业讲题模式：分步思路 + 分层提示，不代写答案
 - 📤 Markdown / JSON / HTML 导出
 
-**Phase 3：作业讲题 / 期末复习 ✅**
-- ✏️ 作业讲题模式（分步思路 + 分层提示，不代写答案）
-- 🎓 期末复习已并入备课：全选全部资料即可生成覆盖整学期的复习材料
+**Agentic 课件比对（LangGraph）**
+- 🧭 上传最新学校 PDF + 往期补习 DOCX/PDF，LangGraph 串联校验、解析、知识点抽取、
+  Hybrid Search 证据召回与覆盖报告
+- 🧑‍🏫 逐项教师审核：covered / partial / missing / conflict / uncertain 五态 + 原文证据
+- 📄 报告可下载 JSON / Markdown；比对只生成报告，不改写原件、不更新资料库
 
-**Phase 4：可靠性与展示版本 ✅**
-- 🖥️ Streamlit 教师工作台（资料库 / 教学任务，结果内联展示、可编辑并导出）
-- ⏱️ 成本与延迟监控（每次生成的耗时、tokens、预估成本）
-- 🧭 产品决策记录（ADR-001~004）
-- 📜 隐私、版权与学术诚信说明
-
-**Phase 5：企业级 API 与评估体系 ✅**
-- 🔌 FastAPI REST 服务（备课 / 讲题 / 课件比对接口，Pydantic 校验、统一错误码）
-- 🔀 多 LLM 后端（DeepSeek / OpenAI / Azure OpenAI，通过环境变量切换）
-- 📊 检索评估（Hit@k / Recall@k / MRR / Precision@k，BM25·Embedding·Hybrid 对比）
+**企业级 API 与评估**
+- 🔌 FastAPI REST：`/api/generate/lesson`、`/api/generate/problem-solving`、`/api/course/compare`
+- 🔀 多 LLM 后端（DeepSeek / OpenAI / Azure OpenAI）
+- 📊 检索评估：Hit@k / Recall@k / MRR / Precision@k，BM25·Embedding·Hybrid 对比
 - ⚖️ LLM-as-judge 生成质量打分（忠实度 / 答案相关性，可选）
-
-**Agentic Demo：新旧课件比对与更新**
-- 🧭 LangGraph 编排 PDF/DOCX 解析、知识点抽取、Hybrid Search 证据召回和覆盖报告
-- 🧑‍🏫 教师审核后，可把已选建议生成独立的 DOCX 修订副本；上传原件不被覆盖
-- 📄 本机安装 LibreOffice 后可将修订版 DOCX 可选导出为 PDF
-- 🔁 同名资料库课件替换须单独确认；替换前保留可在资料库页恢复的旧版本备份
-- 🔒 使用前明确确认课件文本会发送到 DeepSeek API；文件解析、PDF 转换和索引替换均在本机进行
-- 📄 单文件最大 50 MB、最多 120 个文本片段；更大的课件需拆分后比对
+- ⏱️ 耗时 / tokens / 成本监控
 
 ## 🎯 教学任务
 
@@ -147,34 +138,33 @@ uvicorn src.api.main:app --host 0.0.0.0 --port 8000
 
 ## 🧭 教师工作台（Streamlit UI）
 
-`streamlit run app.py` 后打开两个扁平化页面（无嵌套 tab）：
+`streamlit run app.py` 后打开三个扁平化页面（无嵌套 tab）：
 
 - **📚 资料库**：课程统计、文档清单（文件/类型/页数/解析质量/片段数）、上传 PDF 自动合并进知识库，并支持一键刷新
 - **🎯 教学任务**：多选「资料范围」（勾选期末复习 = 全选全部资料）→ 选任务（备课·期末复习 / 作业讲题）→ 结果内联展示：来源引用、需确认项、可编辑，并导出 Markdown / HTML / JSON，同时显示耗时与成本
-- **🆕 新旧课件比对**：覆盖报告、教师审核、DOCX 修订版与可选 PDF；可另外确认同名 PDF 资料替换，旧版可从资料库页回滚
+- **🆕 新旧课件比对**：上传学校 PDF 与补习 DOCX/PDF → 带证据的覆盖报告（五态 + 原文引用），可下载 JSON / Markdown
 
 > 只支持真实生成：必须配置 `DEEPSEEK_API_KEY`（.env），未配置时生成会报错提示。
-> PDF 导出可选依赖本机 LibreOffice；未安装时仍可下载 DOCX 修订版。
 
 ## 📊 项目结构
 
 ```
-├── app.py               # Streamlit 教师工作台（资料库 / 教学任务）
+├── app.py               # Streamlit 教师工作台（资料库 / 教学任务 / 课件比对）
 ├── src/api/             # FastAPI REST 服务（备课 / 讲题 / 课件比对）
 ├── src/core/runtime.py  # 共享的知识库加载与 pipeline 构建（UI/API/评测复用）
+├── src/course_update/   # LangGraph 课件比对与覆盖报告
 ├── src/eval/            # 评估体系（检索指标 / 黄金问题集 / LLM-as-judge）
 ├── .github/workflows/   # CI（lint + 测试 + 覆盖率）与 Docker 发布
 ├── Dockerfile           # Docker 打包（含检索模型，不含课件）
 ├── docker-compose.yml   # 一键启动（数据挂载 ./data）
 ├── scripts/             # setup.sh 一键安装 / run.sh 一键启动 / 模型预下载
-├── src/                 # 核心代码（core/document/retrieval/rag/prompts/eval）
+├── src/                 # 核心代码（core/document/retrieval/rag/prompts/course_update）
 ├── tests/               # 单元与集成测试
-├── docs/                # 文档（中文，含 ADR 决策记录）
-├── data/                # 课程资料与索引（本地私有，不入镜像）
+├── data/                # 课程资料与索引（本地私有，不入库、不入镜像）
 └── logs/                # 运行日志（usage.jsonl 成本/延迟记录，可选）
 ```
 
 ---
 
-**当前状态：** Phase 1-5 全部完成（Phase 5：API 服务 / 多后端 / 评估体系）  
+**当前状态：** RAG 主线（知识库 → 检索 → 生成 → 引用校验 → API → 评测 → 部署）与 LangGraph 课件比对均已落地。  
 **最后更新：** 2026-11-08

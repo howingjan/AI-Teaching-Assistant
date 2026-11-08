@@ -1,11 +1,12 @@
 """
 AI 教学助手 - Streamlit 教师工作台（扁平化版）
 
-两个页面：
+三个页面：
 
   📚 资料库   - 查看课程资料、上传/刷新 PDF、重建索引
   🎯 教学任务 - 多选资料范围，生成「备课 / 期末复习」或「作业讲题」，
                 结果内联展示、编辑与导出（MD/JSON/HTML）
+  🆕 新旧课件比对 - 上传最新学校课件与往期补习课件，生成带证据的覆盖报告
 
 启动：
     source AIvenv312/bin/activate
@@ -16,7 +17,6 @@ AI 教学助手 - Streamlit 教师工作台（扁平化版）
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import sys
@@ -33,12 +33,6 @@ from src.core.config import Config
 from src.core.models import TeachingTask
 from src.core.runtime import build_knowledge_base, build_pipeline
 from src.course_update.graph import build_course_update_graph
-from src.course_update.library_update import (
-    list_replacement_backups,
-    replace_library_document,
-    restore_library_backup,
-)
-from src.course_update.pdf_export import detect_pdf_converter, export_docx_to_pdf
 from src.eval.monitor import UsageMonitor
 from src.rag.llm_client import LLMClient
 from src.rag.pipeline import RAGPipeline
@@ -113,14 +107,6 @@ def refresh_knowledge_base(message: str = "") -> None:
 def doc_name(documents: dict, doc_id: str) -> str:
     doc = documents.get(doc_id)
     return doc.file_name if doc else doc_id
-
-
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -212,48 +198,6 @@ def page_library(loader) -> None:
         except Exception as exc:  # noqa: BLE001
             st.error(f"解析失败：{exc}")
             st.caption("该文件可能已损坏，或不是可解析的 PDF。")
-
-    st.divider()
-    st.markdown("##### ↩️ 资料库版本回滚")
-    backups = list_replacement_backups(st.session_state.course)
-    if not backups:
-        st.caption("尚无课件替换备份。")
-        return
-    backup_by_id = {backup["backup_id"]: backup for backup in backups}
-    selected_backup = st.selectbox(
-        "选择要恢复的旧版本",
-        options=list(backup_by_id),
-        format_func=lambda backup_id: (
-            f"{backup_by_id[backup_id]['file_name']} · "
-            f"{backup_by_id[backup_id]['created_at'][:19]}"
-        ),
-        key=f"library_rollback_choice_{st.session_state.course}",
-    )
-    selected = backup_by_id[selected_backup]
-    st.caption(
-        f"备份 SHA-256：`{selected['sha256']}`。恢复会重新解析文件、"
-        "重建索引并使 embedding 缓存失效。"
-    )
-    confirmed = st.checkbox(
-        "我确认将所选旧版本恢复到当前课程资料库。",
-        key=f"library_rollback_confirm_{st.session_state.course}_{selected_backup}",
-    )
-    if st.button(
-        "恢复所选备份",
-        disabled=not confirmed,
-        key=f"library_rollback_{st.session_state.course}_{selected_backup}",
-    ):
-        try:
-            restore_library_backup(
-                loader,
-                st.session_state.course,
-                selected_backup,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("Course-library rollback failed")
-            st.error(f"恢复失败：{exc}")
-            return
-        refresh_knowledge_base("已恢复备份版本，课程索引和检索缓存已刷新。")
 
 
 # ---------------------------------------------------------------------------
@@ -370,7 +314,7 @@ def page_tasks(pipeline, loader) -> None:
 
 
 def _render_course_update_report(state: dict) -> None:
-    """Render evidence-linked comparison results and reviewed revision actions."""
+    """Render evidence-linked comparison results for teacher review."""
     st.subheader("📊 覆盖度报告")
     report = state.get("coverage_report", [])
     status_labels = {
@@ -442,189 +386,27 @@ def _render_course_update_report(state: dict) -> None:
         use_container_width=True,
     )
 
-    recommendations = [
-        item for item in report
-        if item["coverage"] != "covered" and item["recommendation"].strip()
-    ]
-    if not recommendations:
-        st.info("当前报告没有可供自动生成修订内容的建议。")
-        return
-
-    st.divider()
-    st.markdown("##### ✍️ 选择建议，生成修订版 DOCX")
-    st.caption("原始补习课件保持不变；系统仅在本地输出目录生成新副本。")
-    selected_ids = st.multiselect(
-        "选择要采纳的建议",
-        options=[item["topic_id"] for item in recommendations],
-        format_func=lambda topic_id: next(
-            f"{item['topic_id']} · {item['topic']}"
-            for item in recommendations
-            if item["topic_id"] == topic_id
-        ),
-        key=f"course_update_selected_{state['task_id']}",
+    st.caption(
+        "报告中「未发现 / 部分覆盖 / 可能冲突 / 需人工确认」的知识点，"
+        "请教师依据上方原文证据自行决定是否补充教学材料。"
     )
-    if st.button(
-        "生成修订版 DOCX 副本",
-        type="primary",
-        disabled=not selected_ids,
-        key=f"course_update_revise_{state['task_id']}",
-    ):
-        revision_state = {
-            **state,
-            "action": "revise",
-            "selected_recommendation_ids": selected_ids,
-        }
-        try:
-            with st.spinner("正在生成并校验 DOCX 副本…"):
-                revised = build_course_update_graph(LLMClient()).invoke(revision_state)
-        except Exception as exc:  # noqa: BLE001
-            logger.exception(
-                "Course revision generation failed for task %s",
-                state.get("task_id"),
-            )
-            st.error(f"修订版生成失败：{exc}")
-            return
-        st.session_state.course_update_state = revised
-        st.success("修订版 DOCX 副本已生成，原文件未被修改。")
-
-    current = st.session_state.get("course_update_state", {})
-    revision_path = current.get("revision_docx_path")
-    if revision_path and Path(revision_path).is_file():
-        st.download_button(
-            "⬇️ 下载修订版 DOCX",
-            Path(revision_path).read_bytes(),
-            file_name=Path(revision_path).name,
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            use_container_width=True,
-        )
-        with st.expander("可选：将修订版 DOCX 导出为 PDF"):
-            converter = detect_pdf_converter()
-            if converter is None:
-                st.caption(
-                    "修订版 DOCX 已生成，可直接下载。PDF 转换是独立的可选功能；"
-                    "当前未安装 LibreOffice，因此不影响 DOCX 生成或下载。"
-                )
-                st.code("brew install --cask libreoffice", language="bash")
-                st.caption(
-                    "安装后重启应用，即可在此处使用 PDF 导出。"
-                )
-            else:
-                st.caption(f"本地 PDF 转换器：`{converter}`。")
-                pdf_path = Path(revision_path).with_suffix(".pdf")
-                if st.button(
-                    "转换修订版为 PDF",
-                    key=f"course_update_pdf_{current['task_id']}",
-                ):
-                    try:
-                        exported = export_docx_to_pdf(revision_path, pdf_path)
-                        st.session_state[
-                            f"course_update_pdf_path_{current['task_id']}"
-                        ] = str(exported)
-                        st.success("PDF 已转换并通过文件校验；DOCX 原件保留。")
-                    except Exception as exc:  # noqa: BLE001
-                        logger.exception(
-                            "Course PDF export failed for task %s",
-                            current.get("task_id"),
-                        )
-                        st.error(f"PDF 导出失败：{exc}")
-                saved_pdf = st.session_state.get(
-                    f"course_update_pdf_path_{current['task_id']}"
-                )
-                if saved_pdf and Path(saved_pdf).is_file():
-                    st.download_button(
-                        "⬇️ 下载修订版 PDF",
-                        Path(saved_pdf).read_bytes(),
-                        file_name=Path(saved_pdf).name,
-                        mime="application/pdf",
-                        key=f"course_update_pdf_download_{current['task_id']}",
-                        use_container_width=True,
-                    )
-
-
-def _render_library_replacement(loader, state: dict) -> None:
-    """Offer a separately confirmed, reversible same-name library replacement."""
-    school_path = Path(state["school_pdf_path"])
-    candidates = [
-        (doc_id, doc)
-        for doc_id, doc in loader.documents.items()
-        if doc.file_name.casefold() == state["school_file_name"].casefold()
-    ]
-    if not candidates:
-        st.info("资料库没有同名课件；本次比较不会自动新增资料库文档。")
-        return
-
-    st.divider()
-    st.markdown("##### 🔁 可选：替换资料库中的同名课件")
-    st.warning(
-        "替换会影响后续检索。旧 PDF 会保留为可恢复备份；"
-        "系统将先构建候选索引，再原子替换文件和索引，并清除 embedding 缓存。"
-    )
-    labels = {
-        doc_id: f"{doc.file_name} · {doc.file_path}"
-        for doc_id, doc in candidates
-    }
-    selected_id = st.selectbox(
-        "选择要替换的资料库版本",
-        options=[doc_id for doc_id, _ in candidates],
-        format_func=lambda doc_id: labels[doc_id],
-        key=f"course_update_library_target_{state['task_id']}",
-    )
-    selected_doc = loader.documents[selected_id]
-    current_path = Path(selected_doc.file_path)
-    current_hash = _sha256_file(current_path)
-    new_hash = _sha256_file(school_path)
-    st.caption(f"资料库 SHA-256：`{current_hash}`")
-    st.caption(f"新课件 SHA-256：`{new_hash}`")
-    if current_hash == new_hash:
-        st.success("资料库中的同名课件与本次上传内容一致，无需替换。")
-        return
-
-    confirmed = st.checkbox(
-        f"我确认以本次上传的「{state['school_file_name']}」替换所选资料，并保留旧版本备份。",
-        key=f"course_update_library_confirm_{state['task_id']}_{selected_id}",
-    )
-    if st.button(
-        "确认替换课程资料库",
-        type="primary",
-        disabled=not confirmed,
-        key=f"course_update_library_replace_{state['task_id']}_{selected_id}",
-    ):
-        try:
-            result = replace_library_document(
-                loader,
-                state["course_id"],
-                selected_id,
-                school_path,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception(
-                "Course-library replacement failed for task %s",
-                state.get("task_id"),
-            )
-            st.error(f"资料库替换失败：{exc}")
-            st.caption("请检查错误详情；若回滚也失败，备份目录会保留用于恢复。")
-            return
-        refresh_knowledge_base(str(result["message"]))
 
 
 def page_course_update(loader) -> None:
     """Compare new school materials with a prior tutoring handout."""
-    st.subheader("🆕 新旧课件比对与更新")
+    st.subheader("🆕 新旧课件比对")
     st.caption(
-        "分析最新学校课件与往期补习课件的知识点覆盖情况；"
-        "审核后可生成一个独立的 DOCX 修订副本。"
+        "分析最新学校课件与往期补习课件的知识点覆盖情况，"
+        "生成带原文证据的覆盖报告供教师审核。"
     )
-    st.info(
-        "比对和 DOCX 修订不会自动修改资料库。比对完成后，可单独确认替换同名课件；"
-        "替换会保留可回滚备份。DOCX→PDF 为可选本地转换。"
-    )
+    st.info("比对仅生成覆盖报告，不会修改或替换资料库中的任何文件。")
     st.warning(
-        "隐私提示：文件会先暂存在本机；知识点抽取、比对和修订内容生成会将"
-        "相关文本发送到当前配置的 DeepSeek API。请勿上传不适合发送给第三方服务的资料。"
+        "隐私提示：文件会先暂存在本机；知识点抽取与比对会将"
+        "相关文本发送到当前配置的 LLM API。请勿上传不适合发送给第三方服务的资料。"
     )
     llm_available = LLMClient().available
     if not llm_available:
-        st.error("未配置 DEEPSEEK_API_KEY，当前无法运行课件比对和修订生成。")
+        st.error("未配置 LLM API key，当前无法运行课件比对。")
 
     school_upload = st.file_uploader(
         "最新学校课件（PDF）",
@@ -647,10 +429,10 @@ def page_course_update(loader) -> None:
         if collisions:
             st.warning(
                 f"资料库中已有同名文件：{', '.join(collisions)}。"
-                "比对不会自动覆盖；报告完成后可另行确认替换并保留旧版本备份。"
+                "比对仅生成报告，不会覆盖或替换资料库中的任何文件。"
             )
     consent = st.checkbox(
-        "我已阅读隐私提示，并确认允许将本次课件文本发送到配置的 DeepSeek API。",
+        "我已阅读隐私提示，并确认允许将本次课件文本发送到配置的 LLM API。",
         key="course_update_privacy_consent",
     )
     if st.button(
@@ -686,7 +468,6 @@ def page_course_update(loader) -> None:
             "school_file_name": Path(school_upload.name).name,
             "tutoring_file_path": str(tutoring_path),
             "tutoring_file_name": Path(tutoring_upload.name).name,
-            "selected_recommendation_ids": [],
             "status": "started",
         }
         st.session_state.course_update_state = None
@@ -707,21 +488,6 @@ def page_course_update(loader) -> None:
     state = st.session_state.get("course_update_state")
     if state:
         _render_course_update_report(state)
-        report_school_path = Path(state["school_pdf_path"])
-        if (
-            school_upload is not None
-            and report_school_path.is_file()
-            and _sha256_file(report_school_path)
-            == state.get("school_sha256")
-            and hashlib.sha256(school_upload.getvalue()).hexdigest()
-            == state.get("school_sha256")
-        ):
-            _render_library_replacement(loader, state)
-        else:
-            st.caption(
-                "资料库替换仅对当前报告对应的学校课件开放；"
-                "请重新选择生成此报告时使用的同一文件。"
-            )
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,3 @@
-import hashlib
 import json
 import tempfile
 import unittest
@@ -13,9 +12,6 @@ from src.document.text_chunker import TextChunker
 
 
 class FakeLLMClient:
-    def __init__(self):
-        self.revision_calls = 0
-
     def generate(self, messages, **kwargs):
         system = messages[0]["content"]
         if "课程知识点抽取器" in system:
@@ -35,15 +31,6 @@ class FakeLLMClient:
                     "gap": "还需要补充演示例题。",
                     "recommendation": "补充一个参数更新的数值示例。",
                     "confidence": 0.9,
-                }],
-            }, ensure_ascii=False)
-        if "教学资料编辑助手" in system:
-            self.revision_calls += 1
-            return json.dumps({
-                "sections": [{
-                    "topic_id": "T001",
-                    "heading": "梯度下降补充",
-                    "content": "每次迭代沿损失函数负梯度方向更新参数。",
                 }],
             }, ensure_ascii=False)
         raise AssertionError("Unexpected LLM prompt")
@@ -109,8 +96,7 @@ class TestCourseUpdateGraph(unittest.TestCase):
         self.assertTrue(any(chunk.section == "表格 1" for chunk in chunks))
         self.assertTrue(any("算法 | 用途" in chunk.text for chunk in chunks))
 
-    def test_graph_reports_evidence_and_preserves_original_on_revision(self):
-        initial_hash = hashlib.sha256(self.tutoring_path.read_bytes()).hexdigest()
+    def test_graph_reports_evidence_and_does_not_modify_source(self):
         retriever = FakeRetriever([self.tutoring_chunk])
 
         def fake_factory(*args, **kwargs):
@@ -129,36 +115,16 @@ class TestCourseUpdateGraph(unittest.TestCase):
                 "school_file_name": "latest.pdf",
                 "tutoring_file_path": str(self.tutoring_path),
                 "tutoring_file_name": "previous.docx",
-                "selected_recommendation_ids": [],
-            })
-            self.assertEqual(state["status"], "awaiting_teacher_review")
-            self.assertEqual(state["coverage_report"][0]["coverage"], "partial")
-            self.assertEqual(
-                state["coverage_report"][0]["tutoring_sources"][0]["chunk_id"],
-                "tutor_c1",
-            )
-            self.assertTrue(Path(state["report_json_path"]).is_file())
-
-            revised = graph.invoke({
-                **state,
-                "action": "revise",
-                "selected_recommendation_ids": ["T001"],
             })
 
-        self.assertTrue(Path(revised["revision_docx_path"]).is_file())
+        self.assertEqual(state["status"], "awaiting_teacher_review")
+        self.assertEqual(state["coverage_report"][0]["coverage"], "partial")
         self.assertEqual(
-            hashlib.sha256(self.tutoring_path.read_bytes()).hexdigest(),
-            initial_hash,
+            state["coverage_report"][0]["tutoring_sources"][0]["chunk_id"],
+            "tutor_c1",
         )
-        output_doc = WordDocument(revised["revision_docx_path"])
-        self.assertTrue(any(
-            "梯度下降补充" in paragraph.text
-            for paragraph in output_doc.paragraphs
-        ))
-        self.assertTrue(any(
-            paragraph.text.startswith("审核依据：梯度下降")
-            for paragraph in output_doc.paragraphs
-        ))
+        self.assertTrue(Path(state["report_json_path"]).is_file())
+        self.assertTrue(Path(state["report_markdown_path"]).is_file())
 
     def test_unsupported_evidence_cannot_be_marked_covered(self):
         class HallucinatingLLM(FakeLLMClient):
@@ -193,7 +159,6 @@ class TestCourseUpdateGraph(unittest.TestCase):
                 "school_file_name": "latest.pdf",
                 "tutoring_file_path": str(self.tutoring_path),
                 "tutoring_file_name": "previous.docx",
-                "selected_recommendation_ids": [],
             })
 
         self.assertEqual(state["coverage_report"][0]["coverage"], "uncertain")

@@ -29,10 +29,8 @@ env/
 *.swp
 .DS_Store
 
-# 数据（本地索引、embedding 缓存和生成内容）
-data/index/*.json
-data/index/*.npy
-data/output/
+# 数据（课程课件、本地索引、embedding 缓存和生成内容均不入库）
+data/
 
 # 日志
 logs/

@@ -124,7 +124,6 @@ async def course_compare(
         "tutoring_file_path": str(tutoring_path),
         "school_file_name": school_pdf.filename or "school.pdf",
         "tutoring_file_name": tutoring_file.filename or "tutoring.docx",
-        "action": "analyze",
     }
 
     try:

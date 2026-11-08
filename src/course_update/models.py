@@ -48,8 +48,5 @@ class CourseUpdateState(TypedDict, total=False):
     coverage_report: list[CoverageItem]
     report_json_path: str
     report_markdown_path: str
-    selected_recommendation_ids: list[str]
-    action: str
-    revision_docx_path: str
     error: str
     status: str
