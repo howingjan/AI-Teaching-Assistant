@@ -69,6 +69,7 @@ docker compose up -d --build
 | [🏗️ 架构设计](docs/ARCHITECTURE.md) | 系统分层、技术选型、数据流 |
 | [📁 目录结构](docs/DIRECTORY_GUIDE.md) | 文件夹用途与数据组织 |
 | [⚖️ 隐私与学术诚信](docs/PRIVACY_AND_INTEGRITY.md) | 数据、版权、诚信边界 |
+| [📊 评估体系](docs/EVALUATION.md) | 检索/生成质量评测、黄金问题集、回归流程 |
 | [🧭 新旧课件比对执行方案](docs/AGENTIC_COURSE_MATERIAL_UPDATE_PLAN.md) | LangGraph 工作流、审核边界与后续阶段 |
 | [🧭 产品决策记录](docs/decisions/) | ADR-001~004 关键取舍 |
 
@@ -99,6 +100,12 @@ docker compose up -d --build
 - 🧭 产品决策记录（ADR-001~004）
 - 📜 隐私、版权与学术诚信说明
 
+**Phase 5：企业级 API 与评估体系 ✅**
+- 🔌 FastAPI REST 服务（备课 / 讲题 / 课件比对接口，Pydantic 校验、统一错误码）
+- 🔀 多 LLM 后端（DeepSeek / OpenAI / Azure OpenAI，通过环境变量切换）
+- 📊 检索评估（Hit@k / Recall@k / MRR / Precision@k，BM25·Embedding·Hybrid 对比）
+- ⚖️ LLM-as-judge 生成质量打分（忠实度 / 答案相关性，可选）
+
 **Agentic Demo：新旧课件比对与更新**
 - 🧭 LangGraph 编排 PDF/DOCX 解析、知识点抽取、Hybrid Search 证据召回和覆盖报告
 - 🧑‍🏫 教师审核后，可把已选建议生成独立的 DOCX 修订副本；上传原件不被覆盖
@@ -117,7 +124,28 @@ docker compose up -d --build
 > 「资料范围」支持**多选**；生成前无需填写「本周主题」——内容范围完全由所选资料决定。
 > 勾选「🎓 期末复习」会自动全选全部课件，生成覆盖整学期内容的复习/备课材料。
 
-## �️ 教师工作台（Streamlit UI）
+## 🔌 API 服务（FastAPI）
+
+除 Streamlit 工作台外，同一套核心逻辑也暴露为 REST API：
+
+```bash
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+```
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/health` | 存活探针 |
+| GET | `/api/status` | LLM 后端 / 可用性 |
+| POST | `/api/generate/lesson` | 备课 / 期末复习 |
+| POST | `/api/generate/problem-solving` | 作业 / 真题讲题 |
+| POST | `/api/course/compare` | 新旧课件比对（multipart 上传） |
+
+- 请求体由 Pydantic 校验，未配置 LLM key 时返回 `503`（不会静默降级）。
+- 多 LLM 后端：默认 DeepSeek；设 `LLM_PROVIDER=openai` + `OPENAI_API_KEY`，
+  或 `LLM_PROVIDER=azure` + `AZURE_OPENAI_API_KEY` / `AZURE_OPENAI_ENDPOINT` /
+  `AZURE_OPENAI_DEPLOYMENT` 即可切换。
+
+## 🧭 教师工作台（Streamlit UI）
 
 `streamlit run app.py` 后打开两个扁平化页面（无嵌套 tab）：
 
@@ -132,6 +160,10 @@ docker compose up -d --build
 
 ```
 ├── app.py               # Streamlit 教师工作台（资料库 / 教学任务）
+├── src/api/             # FastAPI REST 服务（备课 / 讲题 / 课件比对）
+├── src/core/runtime.py  # 共享的知识库加载与 pipeline 构建（UI/API/评测复用）
+├── src/eval/            # 评估体系（检索指标 / 黄金问题集 / LLM-as-judge）
+├── .github/workflows/   # CI（lint + 测试 + 覆盖率）与 Docker 发布
 ├── Dockerfile           # Docker 打包（含检索模型，不含课件）
 ├── docker-compose.yml   # 一键启动（数据挂载 ./data）
 ├── scripts/             # setup.sh 一键安装 / run.sh 一键启动 / 模型预下载
@@ -144,5 +176,5 @@ docker compose up -d --build
 
 ---
 
-**当前状态：** Phase 1-4 全部完成  
-**最后更新：** 2026-10-22
+**当前状态：** Phase 1-5 全部完成（Phase 5：API 服务 / 多后端 / 评估体系）  
+**最后更新：** 2026-11-08

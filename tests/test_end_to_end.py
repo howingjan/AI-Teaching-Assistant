@@ -5,8 +5,7 @@ End-to-end tests for the document pipeline.
 import unittest
 import tempfile
 from pathlib import Path
-from src.core.models import Page, Chunk
-from src.document.text_chunker import TextChunker
+from src.core.models import Chunk
 from src.document.document_loader import DocumentLoader
 from conftest import TestRetriever
 

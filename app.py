@@ -31,6 +31,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.core.config import Config
 from src.core.models import TeachingTask
+from src.core.runtime import build_knowledge_base, build_pipeline
 from src.course_update.graph import build_course_update_graph
 from src.course_update.library_update import (
     list_replacement_backups,
@@ -38,11 +39,9 @@ from src.course_update.library_update import (
     restore_library_backup,
 )
 from src.course_update.pdf_export import detect_pdf_converter, export_docx_to_pdf
-from src.document.document_loader import DocumentLoader
 from src.eval.monitor import UsageMonitor
 from src.rag.llm_client import LLMClient
 from src.rag.pipeline import RAGPipeline
-from src.retrieval.retriever import RetrieverFactory
 
 logger = logging.getLogger(__name__)
 
@@ -91,41 +90,11 @@ _init_state()
 @st.cache_resource(show_spinner="加载课程知识库…")
 def get_knowledge_base(course: str, reload_token: int = 0):
     """Load (or build) the course index and create the configured retriever."""
-    loader = DocumentLoader(index_name=course)
-    course_path = Config.DATA_DIR / course
-    if not loader.chunks:
-        # 首次构建：整目录解析并落盘索引
-        if course_path.exists():
-            loader.load_documents_from_directory(str(course_path))
-            loader.save_index()
-    else:
-        # 索引已存在：把磁盘上新增的课件（含 uploads/）合并进索引。
-        # 用 getattr 做保护：若长驻进程加载的是旧版模块（无 sync_directory），
-        # 退化为仅从磁盘索引加载，避免 AttributeError 中断页面。
-        sync = getattr(loader, "sync_directory", None)
-        if callable(sync) and course_path.exists():
-            added_docs, _ = sync(str(course_path))
-            if added_docs:
-                loader.save_index()
-
-    retriever = RetrieverFactory.create(
-        Config.retriever.retriever_type,
-        loader.chunks,
-        loader.documents,
-        model_name=Config.retriever.embedding_model,
-        cache_path=str(Config.get_embedding_cache_path(course)),
-    )
-    return loader, retriever
+    return build_knowledge_base(course)
 
 
 def get_pipeline(loader, retriever, monitor: UsageMonitor) -> RAGPipeline:
-    llm = LLMClient()
-    return RAGPipeline(
-        retriever=retriever,
-        documents=loader.documents,
-        llm_client=llm,
-        monitor=monitor,
-    )
+    return build_pipeline(loader, retriever, monitor)
 
 
 def api_status() -> str:

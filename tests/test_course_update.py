@@ -112,7 +112,9 @@ class TestCourseUpdateGraph(unittest.TestCase):
     def test_graph_reports_evidence_and_preserves_original_on_revision(self):
         initial_hash = hashlib.sha256(self.tutoring_path.read_bytes()).hexdigest()
         retriever = FakeRetriever([self.tutoring_chunk])
-        fake_factory = lambda *args, **kwargs: retriever
+
+        def fake_factory(*args, **kwargs):
+            return retriever
 
         with (
             patch("src.course_update.graph.Config.DATA_DIR", self.data_dir),
@@ -174,7 +176,8 @@ class TestCourseUpdateGraph(unittest.TestCase):
                     })
                 return super().generate(messages, **kwargs)
 
-        fake_factory = lambda *args, **kwargs: FakeRetriever([self.tutoring_chunk])
+        def fake_factory(*args, **kwargs):
+            return FakeRetriever([self.tutoring_chunk])
         with (
             patch("src.course_update.graph.Config.DATA_DIR", self.data_dir),
             patch("src.course_update.graph._parse_pdf", return_value=[self.school_chunk]),

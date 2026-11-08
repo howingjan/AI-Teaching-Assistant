@@ -105,12 +105,17 @@ class LLMClient:
         model: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        provider: Optional[str] = None,
+        api_version: Optional[str] = None,
     ):
-        self.api_key = api_key if api_key is not None else Config.DEEPSEEK_API_KEY
-        self.model = model or Config.llm.model
+        self.provider = (provider or Config.llm.provider).lower()
+        self.api_key = api_key if api_key is not None else self._resolve_api_key()
+        self.model = model or self._default_model()
         self.temperature = temperature if temperature is not None else Config.llm.temperature
         self.max_tokens = max_tokens or Config.llm.max_tokens
         self.api_base_url = Config.llm.api_base_url
+        self.azure_endpoint = Config.llm.azure_endpoint
+        self.azure_api_version = api_version or Config.llm.azure_api_version
         self.timeout = Config.llm.timeout_seconds
         self.retry_count = Config.llm.retry_count
 
@@ -125,9 +130,29 @@ class LLMClient:
     # Client construction
     # ------------------------------------------------------------------
 
+    def _default_model(self) -> str:
+        if self.provider == "azure":
+            return Config.llm.azure_deployment or Config.llm.model
+        return Config.llm.model
+
+    def _resolve_api_key(self) -> Optional[str]:
+        """Resolve the API key for the active provider, with a DeepSeek fallback."""
+        if self.provider == "azure":
+            return Config.AZURE_OPENAI_API_KEY or Config.DEEPSEEK_API_KEY
+        if self.provider == "openai":
+            return Config.OPENAI_API_KEY or Config.DEEPSEEK_API_KEY
+        return Config.DEEPSEEK_API_KEY
+
     def _build_client(self):
-        """Create the OpenAI-compatible client object (lazy import)."""
+        """Create the provider-specific OpenAI-compatible client (lazy import)."""
         try:
+            if self.provider == "azure":
+                from openai import AzureOpenAI
+                return AzureOpenAI(
+                    api_key=self.api_key,
+                    azure_endpoint=self.azure_endpoint,
+                    api_version=self.azure_api_version,
+                )
             from openai import OpenAI
             return OpenAI(api_key=self.api_key, base_url=self.api_base_url)
         except Exception as exc:  # pragma: no cover - defensive

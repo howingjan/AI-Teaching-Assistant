@@ -9,7 +9,6 @@ import os
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
-import json
 from dotenv import load_dotenv
 
 
@@ -42,14 +41,34 @@ class RetrieverConfig:
 
 @dataclass
 class LLMConfig:
-    """Configuration for LLM API calls."""
-    provider: str = "deepseek"  # "deepseek", "openai", etc.
+    """Configuration for LLM API calls (provider-aware)."""
+    provider: str = "deepseek"  # "deepseek", "openai" or "azure"
     model: str = "deepseek-chat"
     temperature: float = 0.7
     max_tokens: int = 8192
     api_base_url: str = "https://api.deepseek.com"
     timeout_seconds: int = 60
     retry_count: int = 3
+    azure_endpoint: str = ""
+    azure_api_version: str = "2024-06-01"
+    azure_deployment: str = ""
+
+    def __post_init__(self):
+        self.provider = os.getenv("LLM_PROVIDER", self.provider).lower()
+        if self.provider == "azure":
+            self.azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", self.azure_endpoint)
+            self.azure_api_version = os.getenv(
+                "AZURE_OPENAI_API_VERSION", self.azure_api_version
+            )
+            self.azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT", self.azure_deployment)
+            # Azure 使用部署名作为模型标识；未单独配置时回退到部署名。
+            if not self.model or self.model == "deepseek-chat":
+                self.model = self.azure_deployment or self.model
+        else:
+            self.api_base_url = os.getenv("LLM_BASE_URL", self.api_base_url)
+            self.model = os.getenv("LLM_MODEL", self.model)
+            if self.provider == "openai" and self.model == "deepseek-chat":
+                self.model = "gpt-4o"
 
 
 @dataclass
@@ -83,12 +102,23 @@ class Config:
     llm = LLMConfig()
     output = OutputConfig()
     
-    # API Key (from environment variable)
+    # API Keys (from environment variables, provider-specific)
     DEEPSEEK_API_KEY: Optional[str] = os.getenv("DEEPSEEK_API_KEY")
+    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    AZURE_OPENAI_API_KEY: Optional[str] = os.getenv("AZURE_OPENAI_API_KEY")
     
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     
+    @classmethod
+    def _provider_api_key(cls) -> Optional[str]:
+        provider = cls.llm.provider
+        if provider == "azure":
+            return cls.AZURE_OPENAI_API_KEY
+        if provider == "openai":
+            return cls.OPENAI_API_KEY
+        return cls.DEEPSEEK_API_KEY
+
     @classmethod
     def validate(cls) -> bool:
         """
@@ -96,8 +126,11 @@ class Config:
         Return False if required config is missing, but don't raise exception
         to allow graceful degradation.
         """
-        if not cls.DEEPSEEK_API_KEY:
-            print("⚠️  Warning: DEEPSEEK_API_KEY not set. LLM features will not work.")
+        if not cls._provider_api_key():
+            print(
+                f"⚠️  Warning: {cls.llm.provider.upper()} API key not set. "
+                "LLM features will not work."
+            )
             return False
         return True
     
@@ -133,6 +166,9 @@ class Config:
                 "model": cls.llm.model,
                 "temperature": cls.llm.temperature,
                 "max_tokens": cls.llm.max_tokens,
+                "api_base_url": cls.llm.api_base_url,
+                "azure_endpoint": cls.llm.azure_endpoint,
+                "azure_deployment": cls.llm.azure_deployment,
             },
             "output": vars(cls.output),
             "log_level": cls.LOG_LEVEL,

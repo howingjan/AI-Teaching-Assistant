@@ -3,7 +3,6 @@ Unit tests for core data models.
 """
 
 import unittest
-from datetime import datetime
 from src.core.models import (
     Document, DocumentType, Page, Chunk, ParseQuality,
     SearchResult, IndexMetadata

@@ -10,7 +10,6 @@ from collections import Counter
 from typing import List, Optional
 
 from src.core.models import Chunk, SearchResult, Document
-from src.core.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +59,6 @@ class EmbeddingRetriever:
     
     def _embed(self, texts: List[str], is_query: bool = False):
         """Encode texts into normalized embedding vectors."""
-        import numpy as np
         model = self._load_model()
         # E5-family models require "query: " / "passage: " prefixes to work well
         prefix = "query: " if is_query else "passage: "
@@ -107,7 +105,6 @@ class EmbeddingRetriever:
         Returns:
             List of SearchResult objects, sorted by similarity
         """
-        import numpy as np
         
         if not query or not query.strip():
             return []
@@ -304,6 +301,108 @@ class HybridRetriever:
         return results
 
 
+class BM25Retriever:
+    """Lexical-only BM25 retriever (keyword recall baseline).
+
+    Exposes the same `.search()` surface as the dense/hybrid retrievers so it
+    can be used standalone — e.g. in the evaluation suite to quantify how much
+    recall the embedding component adds on top of pure keyword matching.
+    """
+
+    _TOKEN_PATTERN = re.compile(r"[a-zA-Z0-9_]+|[\u4e00-\u9fff]+")
+
+    def __init__(
+        self,
+        chunks: List[Chunk],
+        documents: dict[str, Document],
+        **kwargs,
+    ):
+        self.chunks = list(chunks)
+        self.documents = documents
+        self._tokenized_chunks = [self._tokenize(chunk.text) for chunk in self.chunks]
+        self._chunk_frequencies = [Counter(tokens) for tokens in self._tokenized_chunks]
+        self._document_frequencies = Counter(
+            term
+            for frequencies in self._chunk_frequencies
+            for term in frequencies
+        )
+        self._average_length = (
+            sum(map(len, self._tokenized_chunks)) / len(self._tokenized_chunks)
+            if self._tokenized_chunks
+            else 0.0
+        )
+
+    @classmethod
+    def _tokenize(cls, text: str) -> List[str]:
+        """Tokenize Latin terms and overlapping Chinese character n-grams."""
+        tokens = []
+        for part in cls._TOKEN_PATTERN.findall(text.lower()):
+            if re.fullmatch(r"[\u4e00-\u9fff]+", part):
+                tokens.extend(part)
+                tokens.extend(part[i:i + 2] for i in range(len(part) - 1))
+            else:
+                tokens.append(part)
+        return tokens
+
+    def search(
+        self,
+        query: str,
+        top_k: int = 5,
+        score_threshold: float = 0.0,
+        document_ids: Optional[List[str]] = None,
+    ) -> List[SearchResult]:
+        """Retrieve chunks ranked purely by BM25 score."""
+        query_terms = set(self._tokenize(query))
+        if not query_terms or not self.chunks or top_k <= 0:
+            return []
+
+        allowed_documents = set(document_ids) if document_ids is not None else None
+        document_count = len(self.chunks)
+        average_length = self._average_length or 1.0
+        scored: list[tuple[int, float]] = []
+
+        for index, (chunk, frequencies, tokens) in enumerate(
+            zip(self.chunks, self._chunk_frequencies, self._tokenized_chunks)
+        ):
+            if allowed_documents is not None and chunk.document_id not in allowed_documents:
+                continue
+            length = len(tokens)
+            score = 0.0
+            for term in query_terms:
+                term_frequency = frequencies.get(term, 0)
+                if not term_frequency:
+                    continue
+                document_frequency = self._document_frequencies[term]
+                inverse_document_frequency = math.log1p(
+                    (document_count - document_frequency + 0.5)
+                    / (document_frequency + 0.5)
+                )
+                denominator = term_frequency + 1.5 * (
+                    1 - 0.75 + 0.75 * length / average_length
+                )
+                score += inverse_document_frequency * (
+                    term_frequency * (1.5 + 1) / denominator
+                )
+            if score > 0:
+                scored.append((index, score))
+
+        scored.sort(key=lambda item: item[1], reverse=True)
+        max_score = scored[0][1] if scored else 0.0
+        results = []
+        for index, score in scored[:top_k]:
+            chunk = self.chunks[index]
+            normalized = min(1.0, score / max_score) if max_score else 0.0
+            if normalized < score_threshold:
+                continue
+            results.append(SearchResult(
+                chunk=chunk,
+                score=normalized,
+                rank=len(results),
+                reasoning=f"BM25 keyword score: {score:.4f}",
+            ))
+        return results
+
+
 class RetrieverFactory:
     """
     Factory for creating document retrievers.
@@ -317,10 +416,11 @@ class RetrieverFactory:
         **kwargs,
     ):
         """
-        Create a dense or hybrid retriever.
+        Create a dense, BM25-only or hybrid retriever.
 
         Args:
-            retriever_type: "embedding" for dense-only or "hybrid" for dense + BM25.
+            retriever_type: "embedding" (dense-only), "bm25" (keyword-only)
+                or "hybrid" (dense + BM25, default).
             chunks: Chunks to index
             documents: Documents
             **kwargs: Extra options, e.g. model_name / cache_path.
@@ -330,12 +430,13 @@ class RetrieverFactory:
         """
         retriever_class = {
             "embedding": EmbeddingRetriever,
+            "bm25": BM25Retriever,
             "hybrid": HybridRetriever,
         }.get(retriever_type)
         if retriever_class is None:
             raise ValueError(
                 f"Unsupported retriever type: {retriever_type} "
-                "(expected 'embedding' or 'hybrid')"
+                "(expected 'embedding', 'bm25' or 'hybrid')"
             )
         return retriever_class(
             chunks,

@@ -7,7 +7,7 @@ document ID, page numbers, and character positions for accurate citations.
 
 import re
 import logging
-from typing import List, Optional
+from typing import List
 
 from src.core.models import Chunk, Page
 
