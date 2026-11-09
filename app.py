@@ -32,8 +32,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.core.config import Config
 from src.core.models import TeachingTask
 from src.core.runtime import build_knowledge_base, build_pipeline
-from src.course_update.graph import build_course_update_graph
-from src.eval.monitor import UsageMonitor
+from src.course_update.pipeline import run_course_update
+from src.core.monitor import UsageMonitor
 from src.rag.llm_client import LLMClient
 from src.rag.pipeline import RAGPipeline
 
@@ -475,7 +475,7 @@ def page_course_update(loader) -> None:
             with st.spinner(
                 "正在解析课件、抽取知识点并检索补习课件证据…"
             ):
-                result = build_course_update_graph(LLMClient()).invoke(initial_state)
+                result = run_course_update(initial_state, LLMClient())
         except Exception as exc:  # noqa: BLE001
             logger.exception("Course comparison failed for task %s", task_id)
             st.error(f"比对失败：{exc}")

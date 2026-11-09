@@ -13,13 +13,6 @@ python-dotenv==1.2.3
 # LLM API
 openai==3.5.0
 requests==2.34.2
-langgraph==0.2.76
-
-# API 服务层（P0：FastAPI REST 服务）
-# 注意：需兼容 streamlit 的 starlette>=0.46，故用较新的 fastapi 版本
-fastapi==0.162.2
-uvicorn==0.34.0
-python-multipart==0.0.20
 
 # 数值计算
 # numpy<2 是因为 Intel Mac 上 torch 最高只到 2.2.2，而它要求 numpy<2

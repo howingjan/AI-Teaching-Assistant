@@ -7,7 +7,7 @@ from unittest.mock import patch
 from docx import Document as WordDocument
 
 from src.core.models import Chunk, SearchResult
-from src.course_update.graph import _parse_docx, build_course_update_graph
+from src.course_update.pipeline import _parse_docx, run_course_update
 from src.document.text_chunker import TextChunker
 
 
@@ -44,7 +44,7 @@ class FakeRetriever:
         return [SearchResult(self.chunks[0], 0.8, 0)]
 
 
-class TestCourseUpdateGraph(unittest.TestCase):
+class TestCourseUpdatePipeline(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp_dir.cleanup)
@@ -96,26 +96,25 @@ class TestCourseUpdateGraph(unittest.TestCase):
         self.assertTrue(any(chunk.section == "表格 1" for chunk in chunks))
         self.assertTrue(any("算法 | 用途" in chunk.text for chunk in chunks))
 
-    def test_graph_reports_evidence_and_does_not_modify_source(self):
+    def test_run_reports_evidence_and_does_not_modify_source(self):
         retriever = FakeRetriever([self.tutoring_chunk])
 
         def fake_factory(*args, **kwargs):
             return retriever
 
         with (
-            patch("src.course_update.graph.Config.DATA_DIR", self.data_dir),
-            patch("src.course_update.graph._parse_pdf", return_value=[self.school_chunk]),
-            patch("src.course_update.graph._parse_docx", return_value=[self.tutoring_chunk]),
+            patch("src.course_update.pipeline.Config.DATA_DIR", self.data_dir),
+            patch("src.course_update.pipeline._parse_pdf", return_value=[self.school_chunk]),
+            patch("src.course_update.pipeline._parse_docx", return_value=[self.tutoring_chunk]),
         ):
-            graph = build_course_update_graph(self.fake_llm, fake_factory)
-            state = graph.invoke({
+            state = run_course_update({
                 "task_id": self.task_id,
                 "course_id": "demo",
                 "school_pdf_path": str(self.school_path),
                 "school_file_name": "latest.pdf",
                 "tutoring_file_path": str(self.tutoring_path),
                 "tutoring_file_name": "previous.docx",
-            })
+            }, self.fake_llm, fake_factory)
 
         self.assertEqual(state["status"], "awaiting_teacher_review")
         self.assertEqual(state["coverage_report"][0]["coverage"], "partial")
@@ -145,21 +144,22 @@ class TestCourseUpdateGraph(unittest.TestCase):
         def fake_factory(*args, **kwargs):
             return FakeRetriever([self.tutoring_chunk])
         with (
-            patch("src.course_update.graph.Config.DATA_DIR", self.data_dir),
-            patch("src.course_update.graph._parse_pdf", return_value=[self.school_chunk]),
-            patch("src.course_update.graph._parse_docx", return_value=[self.tutoring_chunk]),
+            patch("src.course_update.pipeline.Config.DATA_DIR", self.data_dir),
+            patch("src.course_update.pipeline._parse_pdf", return_value=[self.school_chunk]),
+            patch("src.course_update.pipeline._parse_docx", return_value=[self.tutoring_chunk]),
         ):
-            state = build_course_update_graph(
+            state = run_course_update(
+                {
+                    "task_id": self.task_id,
+                    "course_id": "demo",
+                    "school_pdf_path": str(self.school_path),
+                    "school_file_name": "latest.pdf",
+                    "tutoring_file_path": str(self.tutoring_path),
+                    "tutoring_file_name": "previous.docx",
+                },
                 HallucinatingLLM(),
                 fake_factory,
-            ).invoke({
-                "task_id": self.task_id,
-                "course_id": "demo",
-                "school_pdf_path": str(self.school_path),
-                "school_file_name": "latest.pdf",
-                "tutoring_file_path": str(self.tutoring_path),
-                "tutoring_file_name": "previous.docx",
-            })
+            )
 
         self.assertEqual(state["coverage_report"][0]["coverage"], "uncertain")
         self.assertEqual(state["coverage_report"][0]["tutoring_sources"], [])
@@ -167,15 +167,15 @@ class TestCourseUpdateGraph(unittest.TestCase):
     def test_upload_validation_rejects_outside_task_staging_directory(self):
         outside = Path(self.temp_dir.name) / "outside.pdf"
         outside.write_bytes(b"%PDF-test-fixture")
-        with patch("src.course_update.graph.Config.DATA_DIR", self.data_dir):
+        with patch("src.course_update.pipeline.Config.DATA_DIR", self.data_dir):
             with self.assertRaisesRegex(ValueError, "暂存目录"):
-                build_course_update_graph(self.fake_llm).invoke({
+                run_course_update({
                     "task_id": self.task_id,
                     "school_pdf_path": str(outside),
                     "school_file_name": "latest.pdf",
                     "tutoring_file_path": str(self.tutoring_path),
                     "tutoring_file_name": "previous.docx",
-                })
+                }, self.fake_llm)
 
 
 if __name__ == "__main__":

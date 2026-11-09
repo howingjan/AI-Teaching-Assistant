@@ -1,3 +1,2 @@
-# 开发与 CI 依赖（lint / API 测试客户端）
+# 开发与 CI 依赖（lint）
 ruff==0.8.4
-httpx==0.28.1

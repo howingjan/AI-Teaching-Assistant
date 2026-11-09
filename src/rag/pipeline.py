@@ -36,7 +36,7 @@ from src.prompts.teaching_templates import (
 )
 from src.rag.citation_validator import CitationValidator
 from src.rag.llm_client import LLMClient, parse_json_response
-from src.eval.monitor import UsageMonitor
+from src.core.monitor import UsageMonitor
 
 logger = logging.getLogger(__name__)
 

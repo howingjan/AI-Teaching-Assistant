@@ -1,39 +1,17 @@
 """Shared runtime helpers: knowledge-base loading and pipeline construction.
 
-Extracted from app.py so the Streamlit workbench, the FastAPI service and the
-evaluation CLI all build the corpus + RAG pipeline the same way.
+Extracted from app.py so the Streamlit workbench builds the corpus + RAG
+pipeline in one place.
 """
 
 from typing import Optional, Tuple
 
 from src.core.config import Config
 from src.document.document_loader import DocumentLoader
-from src.eval.monitor import UsageMonitor
+from src.core.monitor import UsageMonitor
 from src.rag.llm_client import LLMClient
 from src.rag.pipeline import RAGPipeline
 from src.retrieval.retriever import RetrieverFactory
-
-# 系统目录，不作为可选课程
-_SYSTEM_DIRS = {Config.INDEX_DIR.name, Config.OUTPUT_DIR.name}
-
-
-def list_courses() -> list[str]:
-    """List course directories under data/ (excluding system directories)."""
-    if not Config.DATA_DIR.exists():
-        return []
-    return [
-        d.name
-        for d in Config.DATA_DIR.iterdir()
-        if d.is_dir() and d.name not in _SYSTEM_DIRS
-    ]
-
-
-def resolve_course(course: Optional[str] = None) -> str:
-    """Resolve a course name, falling back to the first available course."""
-    if course and course.strip():
-        return course.strip()
-    courses = list_courses()
-    return courses[0] if courses else "COMP5310"
 
 
 def build_knowledge_base(course: str) -> Tuple[DocumentLoader, object]:

@@ -1,4 +1,11 @@
-"""LangGraph orchestration for evidence-grounded course-material updates."""
+"""Sequential pipeline for evidence-grounded course-material updates.
+
+Runs six fixed stages in order — validate uploads, parse documents, extract
+topics, retrieve tutoring evidence, assess coverage, and save the report.
+The flow is a simple linear pipeline: the stages never branch or loop, and the
+teacher review happens afterwards in the Streamlit UI, so there is no need for
+an agent/graph orchestration framework here.
+"""
 
 from __future__ import annotations
 
@@ -7,8 +14,6 @@ import json
 import re
 from pathlib import Path
 from typing import Callable
-
-from langgraph.graph import END, START, StateGraph
 
 from src.core.config import Config
 from src.core.models import Chunk, Document, DocumentType, Page
@@ -150,11 +155,16 @@ def _source_chunk_map(chunks: list[Chunk]) -> dict[str, Chunk]:
     return {chunk.chunk_id: chunk for chunk in chunks}
 
 
-def build_course_update_graph(
+def run_course_update(
+    initial_state: dict,
     llm_client,
     retriever_factory: Callable = RetrieverFactory.create,
-):
-    """Build an analysis graph that produces an evidence-grounded coverage report."""
+) -> dict:
+    """Run the course-update analysis and return the completed state.
+
+    Returns a dict containing, at minimum, ``coverage_report``,
+    ``report_json_path``, ``report_markdown_path`` and ``status``.
+    """
 
     def validate_uploads(state: CourseUpdateState) -> dict:
         task_dir = _safe_task_path(state["task_id"])
@@ -389,7 +399,7 @@ def build_course_update_graph(
                 "recommendation": str(assessment.get("recommendation", "")).strip()[:2000],
                 "confidence": confidence,
             })
-        return {"coverage_report": report, "status": "report_ready"}
+        return {"coverage_report": report, "status": "assessed"}
 
     def save_report(state: CourseUpdateState) -> dict:
         task_dir = _safe_task_path(state["task_id"]) / "output"
@@ -448,18 +458,14 @@ def build_course_update_graph(
             "status": "awaiting_teacher_review",
         }
 
-    graph = StateGraph(CourseUpdateState)
-    graph.add_node("validate_uploads", validate_uploads)
-    graph.add_node("parse_documents", parse_documents)
-    graph.add_node("extract_topics", extract_topics)
-    graph.add_node("retrieve_evidence", retrieve_evidence)
-    graph.add_node("assess_coverage", assess_coverage)
-    graph.add_node("save_report", save_report)
-    graph.add_edge(START, "validate_uploads")
-    graph.add_edge("validate_uploads", "parse_documents")
-    graph.add_edge("parse_documents", "extract_topics")
-    graph.add_edge("extract_topics", "retrieve_evidence")
-    graph.add_edge("retrieve_evidence", "assess_coverage")
-    graph.add_edge("assess_coverage", "save_report")
-    graph.add_edge("save_report", END)
-    return graph.compile()
+    state: CourseUpdateState = dict(initial_state)
+    for step in (
+        validate_uploads,
+        parse_documents,
+        extract_topics,
+        retrieve_evidence,
+        assess_coverage,
+        save_report,
+    ):
+        state.update(step(state))
+    return state

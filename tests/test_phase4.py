@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from src.core.models import Document, DocumentType, Chunk
-from src.eval.monitor import UsageMonitor
+from src.core.monitor import UsageMonitor
 from src.rag.pipeline import RAGPipeline
 from conftest import TestRetriever
 
